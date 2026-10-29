@@ -53,6 +53,13 @@ windows/
 │   └── wwwroot/           The entire UI — app.js/app.css/index.html. WPF just hosts this page;
 │                          there is no other native UI beyond the tray icon.
 └── NotiLink.Tests/        xUnit tests for wire framing
+
+macos/                      MVP-core PC-side build in Swift (see "macOS PC-side build" below) —
+├── Sources/NotiLinkCore/   framework-agnostic, same role as NotiLink.Core: framing, TcpServer,
+│                           DiscoveryResponder, PairedDeviceStore (Keychain), IconCache, PcDiagLog
+├── Sources/NotiLinkMac/    AppKit/WebKit shell (AppDelegate + WKWebView host + AppState bridge),
+│                           hosting windows/NotiLink.App/wwwroot/ as-is — not a fork
+└── Tests/, Scripts/build_app.sh
 ```
 
 ### Wire protocol essentials (full spec: `docs/PROTOCOL.md`)
@@ -284,6 +291,27 @@ the one-time local dev-certificate setup. The build auto-signs on every build vi
 warning, not a build failure, but the app won't launch until it's signed.
 
 Run tests: `dotnet test NotiLink.sln` (Core protocol-framing tests only so far).
+
+**macOS** (from `macos/`) — an independent, MVP-core-only implementation of the PC side,
+built fresh in Swift rather than ported from the Windows code (WPF/WebView2/DPAPI/WinRT SMTC/
+WASAPI/scrcpy's Win32 wrapper have no macOS equivalent; see the "macOS PC-side build" section
+below for the full rationale):
+```
+swift build
+```
+A Swift Package (`NotiLinkCore` library + `NotiLinkMac` executable), not an `.xcodeproj` — lets
+it build and run from the command line with no Xcode GUI needed. `swift test` doesn't work in
+every environment (this project's own dev sandbox has no working XCTest/swift-testing macro
+plugin with only Command Line Tools installed, no full Xcode) — `swift run DevSmokeTest` is a
+dependency-free fallback harness exercising the exact same assertions directly against
+`NotiLinkCore` (including a real TCP handshake/pairing round-trip and a real UDP discovery
+round-trip over loopback, no mocks). Build the real double-clickable app with:
+```
+macos/Scripts/build_app.sh
+```
+which also copies the shared `windows/NotiLink.App/wwwroot/` UI into the bundle's
+`Resources/wwwroot` (see below — that folder is reused as-is, not forked) and ad-hoc codesigns
+it, the same role `windows/publish.ps1` plays for the Windows build.
 
 ## Packaging / installing an update (Windows)
 
@@ -977,6 +1005,129 @@ Spec: `docs/PROTOCOL.md`'s "PC ↔ PC".
   (pairing incl. a wrong code, message, clipboard, multi-chunk file, nudge, unpair, and an
   automatic token-based reconnect after a "restart"). Like everything else here it needs the dev
   signing certificate on machines with Smart App Control, or the test DLL is blocked from loading.
+
+## macOS PC-side build
+
+A from-scratch Swift implementation of the PC side under `macos/`, so the same phone/protocol
+can mirror to a Mac — not a line-by-line port, since WPF/WebView2/DPAPI/WinRT SMTC/NAudio-WASAPI/
+scrcpy's Win32 process wrapper have no macOS equivalent. **Built so far**: TCP server + pairing
+(6-digit code + QR) + real notification mirroring (text/images/avatars/real actions/quick-reply
+choices) + delete/delete-all + battery/WiFi/cellular + per-app filter sync + device-management
+basics (rename/unpair/connect-disconnect toggle) + full screen/audio mirroring + single-app
+sharing, all via scrcpy. **Not** built (no architectural blocker, just descoped): the now-playing
+media bar/PC-local media control, call detection, PC↔PC linking, volume/DND/rotation, link
+previews, device badges, local notification history, and the real-time WASAPI-style audio
+waveform (macOS's closest equivalent, Core Audio process taps, needs macOS 14.4+ and its own
+separate permission prompt — deferred, not attempted yet).
+
+- **Confirmed working against a real phone, not just loopback test clients**: pairing, QR/manual
+  IP, notification mirroring (text/images/actions), battery/WiFi. Two real bugs the user found
+  this way got fixed: no `AppIcon.icns` existed at all (blank Dock/Finder icon — now generated
+  and wired through `Resources/Info.plist`/`Scripts/build_app.sh`), and sticker/message images
+  never rendering — `window.setMessageImage(deviceId, key, transferId, dataUrl)` matches a
+  message by its `imageTransferId` *string* (confirmed by reading `app.js` directly), but
+  `AppState`'s binary-frame dispatch was passing the array index instead; the per-message image's
+  real MIME type (`imageMimeType` — `image/webp`/`image/gif` for animated stickers) was also
+  being discarded in favor of a hardcoded `image/jpeg`. Both fixed in
+  `AppState`'s `PendingTransfer.messageImage` case.
+- **Screen/audio sharing (scrcpy) — verified distribution model by downloading and inspecting the
+  real release, not assumed**: the official `scrcpy-macos-{aarch64,x86_64}-v5.0.1.tar.gz`
+  (`macos/tools/fetch-scrcpy.sh`, mirrors `windows/tools/fetch-scrcpy.ps1`'s pin-version/verify-
+  SHA256/vendor-into-a-gitignored-dir pattern) turned out to be **just as self-contained as the
+  Windows zip** — bundles `scrcpy`, `scrcpy-server`, AND a universal (arm64+x86_64) `adb`, with
+  `scrcpy` itself statically linked against SDL 3.4.18/libavcodec 63.1.102 (only system framework
+  dependencies per `otool -L`) — so unlike what seemed likely before checking, **no separate
+  Homebrew install or platform-tools fetch is needed**.
+- **`--no-window` (confirmed via this exact binary's own `--help`) replaces Windows' whole
+  poll-for-`MainWindowHandle`-then-`ShowWindow(SW_HIDE)` hack** for audio-only mirroring — it
+  disables the window while audio keeps flowing, so no window is ever created in the first place.
+- **`ScreenShareService.swift` mirrors `ScreenShareService.cs` method-for-method** (same
+  per-deviceId independent video/audio process tracking, same `EnsureConnectedAsync` USB-serial-
+  aware wireless/tcpip/connect logic, same `FpsRegex`/`ResolutionRegex` stdout/stderr scraping) —
+  using Foundation `Process` instead of `System.Diagnostics.Process`, and `TcpServer
+  .remoteAddress(forDeviceId:)` (new — reads the live socket's peer IP via `NWConnection
+  .endpoint`, mirroring `MainViewModel.cs`'s `_deviceIps`: no separate discovery step, the ADB
+  target is just whatever IP the phone's already-connected socket came from) instead of C#'s
+  `_deviceIps` dictionary. **Not ported**: `WindowIdentity.cs`'s AppUserModelID/taskbar-badge-icon
+  dance — a Windows-taskbar-specific cosmetic with no macOS equivalent concept.
+- **Reconnect-robustness parity ported deliberately, not re-discovered the hard way**: `share.
+  status` is re-announced to the phone on every (re)connect (not just on change) and
+  `ScreenShareService.stopAll(deviceId:)` fires on every disconnect — the same two fixes already
+  documented above for the Windows build (a stuck-stale "Compartiendo..." phone notification, and
+  an orphaned scrcpy process after a silent network drop), ported straight from that documented
+  root cause instead of waiting to rediscover the same bug independently on macOS.
+- **Requires the same one-time Android-side setup ADB always has, same as Windows**: either a USB
+  connection at least once, or "Depuración inalámbrica" paired manually in the phone's Developer
+  Options beforehand — NotiLink's own pairing is a completely separate trust mechanism from ADB's,
+  and neither one can bootstrap the other. If "Compartir pantalla"/"Compartir audio" fails with
+  "No se pudo conectar", that's almost always this, not a NotiLink bug — check `pc.log` and/or run
+  the vendored `scrcpy -s <ip>:5555` by hand from a terminal for the real underlying error first.
+- **Confirmed working live, repeatedly, against the user's real phone** (full-screen video share,
+  multiple start/stop cycles, visible in `pc.log`) — this validated the whole chain end to end:
+  `TcpServer.remoteAddress`, the `EnsureConnectedAsync`-equivalent wireless ADB flow, and process
+  lifecycle/cleanup.
+- **Single-app sharing** (`scrcpy --new-display --start-app=<pkg>`, `ScreenShareService.swift`'s
+  `startApp`/`monitorApp`/`returnApp`/`stopApp`) ported from `StartAppAsync`/`MonitorAppAsync`/
+  `ReturnAppAsync`/`StopApp` (C#) — same scrcpy flags (`--new-display`, `--start-app=`,
+  `--display-ime-policy=`, `--no-vd-system-decorations`, `--no-vd-destroy-content`, all confirmed
+  present in the vendored v5.0.1 binary's own `--help` before porting, not assumed), same
+  `dumpsys activity activities`-polling state-detection loop (every 2.5s, 2 consecutive misses =
+  closed on the phone), same `share.stop.app`/`share.app.return`/`share.recents` wire messages
+  (`docs/PROTOCOL.md`), using a cancellable Swift `Task` per app session instead of C#'s `async
+  while`. **Deliberately not ported**: Windows' companion-mirror window swap
+  (`StartCompanion`/`StopCompanion` in `ScreenShareService.cs`) — when the shared app is opened on
+  the phone's own screen, Windows swaps the PC's scrcpy window for a live mirror of the phone's
+  whole screen at the same position, which needs finding/repositioning/hiding *another process's*
+  window via raw Win32 (`GetWindowRect`/`SetWindowPos`/`ShowWindow`). macOS has no equivalent
+  without the Accessibility permission (`AXUIElement` cross-process window geometry) — a real,
+  separate trust ask this build has never needed before, same category as the Android app's own
+  Accessibility permission. The app-share window just goes idle/blank while the app sits on the
+  phone's own screen instead (state is still correctly tracked as `"phone"` and "Traer a la PC"
+  still works) — a real, flagged UX gap versus Windows, not a silent one.
+
+- **`windows/NotiLink.App/wwwroot/` is reused as-is, not forked** — confirmed self-contained
+  static HTML/CSS/JS with no server templating and no external resource loads, so it can be
+  copied verbatim into `NotiLink.app/Contents/Resources/wwwroot` (by `macos/Scripts/build_app.sh`,
+  a build step, not a checked-in duplicate) and hosted in a `WKWebView` instead of WebView2. The
+  *only* shared-file change needed was making `app.js`'s `postToHost()` feature-detect
+  `window.webkit.messageHandlers.notilink` alongside `window.chrome.webview` — confirmed via a
+  full catalog of every `action`/`window.onXxx` call in the JS↔native bridge that nothing else
+  in `wwwroot/` is WebView2-specific. Everything else (the `action` catalog in, `window.setXxx`/
+  `window.upsertNotification` calls out) is reused unchanged.
+- **Swift Package (`NotiLinkCore` library + `NotiLinkMac` executable), not an `.xcodeproj`** —
+  buildable/testable from the command line with no Xcode GUI. `NotiLinkCore` is pure, UI-free
+  Swift (framing, the protocol's envelope/message types, `TcpServer`/`DiscoveryResponder` on
+  `Network.framework`, `PairedDeviceStore`, `IconCache`, `PcDiagLog`); `NotiLinkMac` is the thin
+  AppKit/WebKit shell (`AppDelegate` owns one real `NSWindow` hosting a raw `WKWebView` —
+  deliberately *not* a SwiftUI `WindowGroup`, whose automatic last-window-closed termination
+  fights the "close ≠ quit" tray-app model this needs, mirroring the Windows build's own
+  `_isExiting`-flag design; a status-item menu's "Salir" is the only real quit path, same as
+  Windows' tray icon).
+- **Keychain instead of DPAPI** for pairing tokens, via a `TokenStoring` protocol seam
+  (`KeychainTokenStore` in production) — **this seam exists because of a real bug found while
+  building this**: an unsigned dev binary rebuilt on every `swift run` gets a fresh ad-hoc
+  signature each time, and the Keychain can hang `SecItemAdd`/`SecItemUpdate` *indefinitely*
+  waiting for a confirmation sheet with no Window Server session available to show it (confirmed
+  live — the pairing flow completed instantly once an `InMemoryTokenStore` was swapped in for
+  tests, and the real ad-hoc-*codesigned* `.app` bundle, launched normally via `open`, never hit
+  this at all). `swift test` doesn't work in this project's own dev sandbox either (no working
+  XCTest/swift-testing macro plugin with only Command Line Tools, no full Xcode installed) —
+  `swift run DevSmokeTest` is a dependency-free fallback exercising the same assertions directly,
+  including a real TCP handshake/pairing round trip and a real UDP discovery round trip over
+  loopback (no mocks).
+- **The protocol's purely-positional binary-frame association is handled with one global
+  per-device FIFO** (`AppState`'s `pendingTransfers`) — correct specifically because a single
+  phone writes every JSON+binary pair onto one TCP stream in strict send order, mirroring
+  `TcpServer.ExtractExpectedTransferIds` (C#)'s same approach.
+- **This project's own dev sandbox can't fully exercise live networking** — `swift run`'s
+  freshly-ad-hoc-signed-on-every-build binary reliably gets silently denied by macOS's Local
+  Network privacy gate in this specific headless session (no Window Server to show the
+  permission prompt; UDP discovery's loopback test came back `POSIXErrorCode 89` "Operation
+  canceled", and TCP pairing sometimes outright stops responding after enough rebuilds) — not a
+  code bug, confirmed by testing the real `Scripts/build_app.sh`-produced, stably-signed `.app`
+  bundle instead (launched normally via `open`), which has worked every time, including the real
+  phone verification above. When `swift run DevSmokeTest` mysteriously stops passing in this
+  environment, rebuild the real `.app` and test against that before assuming the code regressed.
 
 ## Project history in brief
 

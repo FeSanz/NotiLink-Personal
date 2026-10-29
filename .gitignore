@@ -15,6 +15,14 @@ windows/**/obj/
 windows/.vs/
 *.user
 
+# macOS / Swift Package Manager build artifacts
+macos/.build/
+macos/.swiftpm/
+
+# Vendored third-party tool (scrcpy) for macOS — fetched by macos/tools/fetch-scrcpy.sh,
+# not committed, mirrors the windows/NotiLink.App/tools/scrcpy/ entry above.
+macos/Sources/NotiLinkMac/tools/scrcpy/
+
 # Vendored third-party tool (scrcpy) — fetched by windows/tools/fetch-scrcpy.ps1, not
 # committed: ~25MB of prebuilt binaries with no place in source control. See CLAUDE.md.
 windows/NotiLink.App/tools/scrcpy/

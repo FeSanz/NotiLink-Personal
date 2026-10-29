@@ -861,6 +861,9 @@
   function postToHost(message) {
     if (window.chrome && window.chrome.webview) {
       window.chrome.webview.postMessage(message);
+    } else if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.notilink) {
+      // macOS build (WKWebView) — see macos/Sources/NotiLinkMac/WebViewHost.swift.
+      window.webkit.messageHandlers.notilink.postMessage(message);
     }
   }
 
