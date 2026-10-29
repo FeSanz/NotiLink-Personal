@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NotiLink</string>
+    <string name="status_idle">Sin conexión</string>
+    <string name="label_pc_ip">IP de la PC</string>
+    <string name="section_send_text_title">Enviar texto a la PC</string>
+    <string name="hint_share_text">Escribe o pega algo…</string>
+    <string name="btn_send_share_text">Enviar</string>
+    <string name="title_app_filter">Apps con notificaciones</string>
+    <string name="btn_app_filter">Elegir apps con notificaciones</string>
+    <string name="btn_scan_qr">Escanear QR</string>
+    <string name="btn_discover">Buscar PC en la red</string>
+    <string name="label_pairing_code_hint">Confirma que este código coincide con el de tu PC:</string>
+    <string name="btn_confirm_pairing">Confirmar</string>
+    <string name="status_discovering">Buscando PC en la red...</string>
+    <string name="status_discover_not_found">No se encontró ninguna PC. Prueba con el código QR o la IP manual.</string>
+    <string name="status_discover_found">PC encontrada: %1$s</string>
+    <string name="section_connection_title">Conexión con la PC</string>
+    <string name="section_permissions_title">Permisos y optimización</string>
+    <string name="section_more_title">Más opciones</string>
+    <string name="hint_search_apps">Buscar app...</string>
+    <string name="tab_apps_all">Todas</string>
+    <string name="tab_apps_user">Instaladas</string>
+    <string name="tab_apps_system">Sistema</string>
+    <string name="hint_samsung_sleeping_apps">En algunos Samsung, la reconexión en segundo plano también depende de un ajuste aparte: Batería > Límites de uso en segundo plano > Apps que nunca duermen — agrega NotiLink ahí para que reconecte sin tener que abrir la app.</string>
+    <string name="hint_permission_auto_revoke">Android (y Samsung en particular) puede revocar solo el permiso de Accesibilidad si no abres NotiLink por un tiempo — es una medida de seguridad para apps instaladas fuera de Play Store, no un fallo de la app. Si notas que "Abrir en el teléfono" deja de funcionar solo, revisa: Información de la app → Permisos → busca "Pausar actividad si no se usa" y desactívalo.</string>
+    <string name="btn_app_info">Abrir información de la app</string>
+    <string name="status_waiting_for_pc">Esperando conexión con la PC…</string>
+    <string name="status_connected_to_pc">Conectado a la PC</string>
+    <string name="btn_reconnect_now">🔄 Reconectar</string>
+    <string name="btn_find_pcs">🔍 Buscar PCs</string>
+    <string name="btn_add_pc">＋ Vincular otra PC / cambiar IP</string>
+    <string name="btn_hide_setup">Ocultar</string>
+    <string name="btn_connect_ip">Conectar</string>
+    <string name="btn_connect_saved_pc">Conectar</string>
+    <string name="title_other_pcs">OTRAS PCS VINCULADAS</string>
+    <string name="hint_setup_first">Abre NotiLink en la PC y escanea su QR, búscala en la red o escribe su IP.</string>
+    <string name="hint_setup_more">Para otra PC (o si cambió la IP): escanea su QR, búscala o escribe su IP. Solo se conecta una PC a la vez.</string>
+    <string name="status_connected_to_named">Conectado a %1$s</string>
+    <string name="status_searching_named">Buscando a %1$s…</string>
+    <string name="status_manual_named">Desconectado de %1$s (toca Reconectar)</string>
+    <string name="status_checking">Buscando…</string>
+    <string name="error_ip_invalid">IP no válida (ejemplo: 192.168.1.20)</string>
+    <string name="toast_need_pc_first">Primero vincula una PC: escanea su QR, búscala o escribe su IP.</string>
+    <string name="toast_pc_found_connecting">%1$s encontrada (%2$s). Conectando…</string>
+    <string name="toast_pc_found_new_ip">%1$s se encontró en una IP nueva (%2$s). Se guardó y se está conectando.</string>
+    <string name="toast_pc_not_found">No se encontró %1$s. ¿Está encendida, en la misma red y con NotiLink abierto?</string>
+    <string name="toast_no_pcs_found">No se encontró ninguna PC con NotiLink en esta red.</string>
+    <string name="toast_pc_saved">%1$s encontrada y guardada (%2$s). Conectando…</string>
+    <string name="toast_switching_pc">Cambiando a %1$s…</string>
+    <string name="toast_qr_invalid">El QR no contiene una IP válida.</string>
+    <string name="toast_pc_removed">%1$s se quitó de la lista.</string>
+    <string name="dialog_found_pcs_title">PCs encontradas</string>
+    <string name="label_pc_current">conectada</string>
+    <string name="label_pc_saved">vinculada</string>
+    <string name="dialog_switch_title">¿Cambiar de PC?</string>
+    <string name="dialog_switch_message">Solo puedes estar conectado a una PC a la vez. Se desconectará de %1$s y se conectará a %2$s.</string>
+    <string name="dialog_switch_confirm">Cambiar</string>
+    <string name="dialog_no_answer_title">No hay respuesta</string>
+    <string name="dialog_no_answer_message">Ninguna PC con NotiLink respondió en %1$s. ¿Guardarla de todos modos? (por ejemplo, si la PC está apagada ahora)</string>
+    <string name="dialog_save_anyway">Guardar igual</string>
+    <string name="dialog_remove_pc_title">¿Quitar %1$s?</string>
+    <string name="dialog_remove_pc_message">Dejará de aparecer aquí. Para volver a usarla habrá que buscarla o escanear su QR otra vez.</string>
+    <string name="dialog_remove">Quitar</string>
+    <string name="dialog_cancel">Cancelar</string>
+    <string name="status_reconnecting">Reconectando…</string>
+
+    <!-- Unified permissions list — same shape for every row (title + status subtitle + a
+         Switch that only reflects state). Tapping a row that's off launches the grant flow;
+         tapping one that's on opens wherever it can actually be revoked. -->
+    <string name="perm_title_notification_access">Acceso a notificaciones</string>
+    <string name="perm_subtitle_notification_access_on">Activo — toca para revisar o desactivar</string>
+    <string name="perm_subtitle_notification_access_off">Necesario para recibir tus notificaciones en la PC. Toca para activarlo</string>
+
+    <string name="perm_title_battery">Optimización de batería</string>
+    <string name="perm_subtitle_battery_on">Sin restricciones — toca para gestionar</string>
+    <string name="perm_subtitle_battery_off">Puede cortar la conexión con la pantalla bloqueada. Toca para permitir actividad en segundo plano</string>
+
+    <string name="perm_title_post_notifications">Notificaciones de NotiLink</string>
+    <string name="perm_subtitle_post_notifications_on">Activo — toca para gestionar</string>
+    <string name="perm_subtitle_post_notifications_off">Necesario para el aviso de estado en segundo plano. Toca para activarlo</string>
+
+    <string name="perm_title_photos">Fotos</string>
+    <string name="perm_subtitle_photos_on">Activo — toca para gestionar</string>
+    <string name="perm_subtitle_photos_off">Necesario para mostrar tu fondo de pantalla en la PC. Toca para activarlo</string>
+
+    <string name="perm_title_location">Ubicación</string>
+    <string name="perm_subtitle_location_on">Activa — toca para gestionar</string>
+    <string name="perm_subtitle_location_off">Necesaria para mostrar la red Wi-Fi conectada. Toca para activarla</string>
+
+    <string name="perm_title_phone_state">Estado del teléfono</string>
+    <string name="perm_subtitle_phone_state_on">Activo — toca para gestionar</string>
+    <string name="perm_subtitle_phone_state_off">Necesario para mostrar los datos móviles. Toca para activarlo</string>
+
+    <string name="accessibility_service_description">Permite que NotiLink abra una notificación específica en este teléfono cuando lo pides desde la PC — el mismo efecto que tocarla tú mismo. No lee ni envía el contenido de la pantalla para ningún otro fin.</string>
+    <string name="perm_title_accessibility">Abrir notificaciones desde la PC</string>
+    <string name="perm_subtitle_accessibility_on">Activo — toca para gestionar</string>
+    <string name="perm_subtitle_accessibility_off">Opcional. Permite abrir una notificación específica desde la PC, como si la tocaras en el teléfono. Toca para activarlo</string>
+    <string name="perm_title_answer_calls">Contestar llamadas desde la PC</string>
+    <string name="perm_subtitle_answer_calls_on">Activo — toca para gestionar</string>
+    <string name="perm_subtitle_answer_calls_off">Opcional. Permite contestar y colgar llamadas desde los botones de la PC. Toca para activarlo</string>
+    <string name="perm_title_rotation">Controlar la rotación desde la PC</string>
+    <string name="perm_subtitle_rotation_on">Activo — toca para gestionar</string>
+    <string name="perm_subtitle_rotation_off">Opcional. Permite activar/desactivar la rotación automática desde el botón de la PC (permiso "Modificar ajustes del sistema"). Toca para activarlo</string>
+    <string name="perm_title_dnd">Activar No molestar desde la PC</string>
+    <string name="perm_subtitle_dnd_on">Activo — toca para gestionar</string>
+    <string name="perm_subtitle_dnd_off">Opcional. Permite activar/desactivar el modo No molestar del teléfono desde el botón de la PC. Toca para activarlo</string>
+
+    <string name="share_target_label">Enviar a la PC</string>
+    <string name="toast_shared_to_pc">Enviado a la PC</string>
+    <string name="toast_shared_multiple_to_pc">%1$d archivos enviados a la PC</string>
+    <string name="toast_share_no_pc">No hay una PC vinculada</string>
+    <string name="toast_share_empty">No hay nada que compartir</string>
+    <string name="toast_share_file_too_big">El archivo es muy grande (máximo 8 MB)</string>
+    <string name="btn_send_logs">Enviar logs de diagnóstico a la PC ahora</string>
+    <string name="toast_logs_sent">Logs enviados a la PC</string>
+    <string name="toast_logs_empty">No hay nada que enviar todavía</string>
+    <string name="toast_logs_no_pc">No hay una PC vinculada</string>
+
+    <string name="about_version">Versión %1$s</string>
+    <string name="about_build">Compilado el %1$s</string>
+    <string name="about_author">Desarrollado por %1$s</string>
+    <!-- Main screen segments / actions -->
+    <string name="segment_actions">Acciones</string>
+    <string name="segment_permissions">Permisos</string>
+    <string name="section_share_title">Compartir con la PC</string>
+    <string name="hint_actions_connected">Toca para empezar; si está activa, tócala de nuevo para detenerla.</string>
+    <string name="hint_actions_disconnected">Conéctate a la PC para usar estas acciones.</string>
+    <string name="tile_screen_title">Pantalla</string>
+    <string name="tile_app_title">Una app</string>
+    <string name="tile_audio_title">Audio</string>
+    <string name="tile_media_title">Archivos</string>
+    <string name="tile_screen_idle">Ver todo el celular en la PC</string>
+    <string name="tile_screen_active">Compartiendo · toca para detener</string>
+    <string name="tile_app_idle">Abrir solo una app en la PC</string>
+    <string name="tile_app_active">%1$d en la PC · toca para otra</string>
+    <string name="tile_audio_idle">Escuchar el celular en la PC</string>
+    <string name="tile_audio_active">Transmitiendo · toca para detener</string>
+    <string name="tile_media_idle">Enviar a Descargas de la PC</string>
+    <string name="section_active_apps">En la PC ahora</string>
+    <string name="active_app_on_pc">Se muestra en la PC</string>
+    <string name="active_app_on_phone">Abierta en el celular</string>
+    <string name="btn_show_on_pc">Mostrar en la PC</string>
+    <string name="btn_stop_share">Detener</string>
+    <string name="btn_stop_all_shares">Detener todo lo que se comparte</string>
+    <string name="toast_actions_not_connected">Conéctate a la PC primero</string>
+    <string name="toast_share_requested_screen">Compartiendo la pantalla con la PC…</string>
+    <string name="toast_share_requested_audio">Transmitiendo el audio a la PC…</string>
+    <string name="toast_share_stopping">Deteniendo…</string>
+    <string name="title_app_picker">Compartir una app</string>
+    <string name="app_picker_hint">La app se abrirá en su propia ventana en la PC. Solo se ve esa app, sin tus notificaciones.</string>
+    <string name="tag_app_recent">Reciente</string>
+    <string name="tag_app_on_pc">● Ya está en la PC</string>
+    <string name="toast_app_share_requested">Abriendo %1$s en la PC…</string>
+    <string name="toast_app_already_shared">%1$s ya está abierta en la PC</string>
+    <string name="segment_notifications">Notificaciones</string>
+    <string name="hint_notifications_segment">Elige qué apps reflejan sus notificaciones en la PC. También se puede cambiar desde la PC.</string>
+    <string name="tile_recents_title">Recientes</string>
+    <string name="tile_recents_empty">Aún no compartes ninguna app desde aquí</string>
+    <string name="hint_share_text_pc">Enviar texto a la PC…</string>
+    <string name="widget_label">Compartir app en la PC</string>
+    <string name="widget_description">Tus apps recientes: un toque y se abren en la PC. Agrándalo (2x1, 1x2, 1x3, 1x4) para ver más.</string>
+    <string name="widget_empty">Toca para elegir una app</string>
+    <string name="menu_remove_recent">Quitar de recientes</string>
+    <string name="toast_recent_removed">%1$s quitada de recientes</string>
+    <string name="dialog_stop_share_title">¿Detener la transmisión de %1$s?</string>
+    <string name="dialog_stop_share_message">Se cerrará su ventana en la PC.</string>
+    <string name="route_lan">red local</string>
+    <string name="route_vpn">Tailscale (remoto)</string>
+    <string name="route_metered">datos móviles, modo ahorro</string>
+    <string name="perm_title_audio_levels">Ondas al ritmo de la música (opcional)</string>
+    <string name="perm_subtitle_audio_levels_on">Activado: las ondas del reproductor en la PC siguen lo que suena en el celular. Solo se analiza el sonido, no se graba.</string>
+    <string name="perm_subtitle_audio_levels_off">Toca para permitir: Android pide el permiso de audio para medir el ritmo de la música. No se graba nada.</string>
+    <string name="hint_huawei_launch">Importante en Huawei: al bloquear la pantalla, el administrador de energía (PowerGenie) congela NotiLink y le corta la conexión con la PC, aunque no tenga restricciones de batería. Solución: abre "Inicio de aplicaciones", desactiva "Gestionar automáticamente" para NotiLink y en la ventana activa Inicio automático, Inicio secundario y Ejecutar en segundo plano. Para compartir pantalla por Wi-Fi: Opciones de desarrollador > Depuración USB e inalámbrica.</string>
+    <string name="btn_huawei_launch">Abrir inicio de aplicaciones (Huawei)</string>
+</resources>

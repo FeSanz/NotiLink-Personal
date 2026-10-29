@@ -1,0 +1,699 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fixed top (connection + segment switch) and one panel per segment below it — Acciones fits
+     on screen without scrolling; Permisos scrolls; Notificaciones is the app filter list. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/rootMain"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:paddingHorizontal="14dp"
+    android:paddingTop="10dp">
+
+    <!-- Section: connection/pairing with the PC -->
+    <com.google.android.material.card.MaterialCardView
+        style="?attr/materialCardViewOutlinedStyle"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="0dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="12dp">
+
+            <TextView
+                style="@style/SectionTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/section_connection_title" />
+
+            <!-- Shown once a PC is saved: a status line (dot + "Conectado a <PC>" / "Buscando a
+                 <PC>…") with the address under it, then real buttons — Reconectar (checks the PC
+                 is actually there first, see MainActivity.reconnectWithCheck) and Buscar PCs
+                 (lists every NotiLink PC on the network). The other saved PCs follow, each with
+                 its own "Conectar" — only one PC is ever connected at a time. -->
+            <LinearLayout
+                android:id="@+id/layoutConnectionState"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <View
+                        android:id="@+id/viewConnectionDot"
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:layout_marginEnd="8dp" />
+
+                    <TextView
+                        android:id="@+id/textConnectionState"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:text="@string/status_waiting_for_pc" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/textConnectionDetail"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="18dp"
+                    android:layout_marginTop="2dp"
+                    android:textSize="12sp"
+                    android:textColor="#888888" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonReconnectNow"
+                        style="@style/RoundedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="8dp"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp"
+                        android:text="@string/btn_reconnect_now" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonFindPcs"
+                        style="@style/RoundedOutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/btn_find_pcs" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/textOtherPcsTitle"
+                    style="@style/SectionTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/title_other_pcs"
+                    android:visibility="gone" />
+
+                <LinearLayout
+                    android:id="@+id/layoutOtherPcs"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/buttonAddPc"
+                    style="@style/RoundedOutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="@string/btn_add_pc" />
+            </LinearLayout>
+
+            <!-- Shown only while a pairing code needs confirming (see PairingState) —
+                 independent of layoutConnectionSetup below since re-pairing can happen
+                 even for a device that was previously paired (e.g. removed on the PC). -->
+            <LinearLayout
+                android:id="@+id/layoutPairingCode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:visibility="gone"
+                android:layout_marginTop="14dp"
+                android:padding="18dp"
+                android:background="@drawable/bg_pairing_code">
+
+                <!-- bg_pairing_code is a fixed light-gray box that doesn't adapt to dark
+                     mode, so its text colors are pinned dark too — otherwise dark mode's
+                     default light text color makes the code blend into this box. -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/label_pairing_code_hint"
+                    android:textSize="14sp"
+                    android:textColor="#3A3A3A"
+                    android:gravity="center" />
+
+                <TextView
+                    android:id="@+id/textPairingCode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:textSize="34sp"
+                    android:textStyle="bold"
+                    android:textColor="#1A1A1A"
+                    android:letterSpacing="0.2" />
+
+                <Button
+                    android:id="@+id/buttonConfirmPairing"
+                    style="@style/RoundedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/btn_confirm_pairing" />
+            </LinearLayout>
+
+            <!-- The actual "how do I pair" setup UI — hidden once a valid pairing already
+                 exists, per textConnectionState above. -->
+            <LinearLayout
+                android:id="@+id/layoutConnectionSetup"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/textSetupHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:textSize="12sp"
+                    android:textColor="#888888"
+                    android:text="@string/hint_setup_first" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <EditText
+                        android:id="@+id/editPcIp"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="8dp"
+                        android:hint="@string/label_pc_ip"
+                        android:importantForAutofill="no"
+                        android:imeOptions="actionGo"
+                        android:digits="0123456789."
+                        android:inputType="number|numberDecimal"
+                        android:maxLength="15" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/buttonConnectIp"
+                        style="@style/RoundedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp"
+                        android:text="@string/btn_connect_ip" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="10dp"
+                    android:weightSum="2">
+
+                    <Button
+                        android:id="@+id/buttonScanQr"
+                        style="@style/RoundedOutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="8dp"
+                        android:text="@string/btn_scan_qr" />
+
+                    <Button
+                        android:id="@+id/buttonDiscover"
+                        style="@style/RoundedOutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:layout_height="wrap_content"
+                        android:text="@string/btn_discover" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.button.MaterialButtonToggleGroup
+        android:id="@+id/toggleSegments"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        app:singleSelection="true"
+        app:selectionRequired="true"
+        app:checkedButton="@+id/buttonSegmentActions">
+
+        <Button
+            android:id="@+id/buttonSegmentActions"
+            style="@style/SegmentButton"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="@string/segment_actions" />
+
+        <Button
+            android:id="@+id/buttonSegmentPermissions"
+            style="@style/SegmentButton"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="@string/segment_permissions" />
+
+        <Button
+            android:id="@+id/buttonSegmentNotifications"
+            style="@style/SegmentButton"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="@string/segment_notifications" />
+    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <!-- ===== Segment 1: Acciones ===== -->
+        <ScrollView
+            android:id="@+id/layoutActionsPanel"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/textActionsHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:layout_marginHorizontal="2dp"
+                    android:textSize="12sp"
+                    android:textColor="#888888"
+                    android:text="@string/hint_actions_connected" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <include
+                        android:id="@+id/tileScreen"
+                        layout="@layout/item_action_tile"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="10dp" />
+                    <include
+                        android:id="@+id/tileApp"
+                        layout="@layout/item_action_tile"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                </LinearLayout>
+
+                <!-- Recientes: full width, the last apps shared, one tap to open again. -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardRecents"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="#33888888"
+                    app:cardBackgroundColor="@android:color/transparent">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="12dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center_horizontal"
+                            android:textSize="13sp"
+                            android:textStyle="bold"
+                            android:text="@string/tile_recents_title" />
+
+                        <LinearLayout
+                            android:id="@+id/rowRecents"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:gravity="center_horizontal"
+                            android:orientation="horizontal" />
+
+                        <TextView
+                            android:id="@+id/textRecentsEmpty"
+                            android:layout_gravity="center_horizontal"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:textSize="12sp"
+                            android:textColor="#888888"
+                            android:text="@string/tile_recents_empty" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal">
+
+                    <include
+                        android:id="@+id/tileAudio"
+                        layout="@layout/item_action_tile"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="10dp" />
+                    <include
+                        android:id="@+id/tileMedia"
+                        layout="@layout/item_action_tile"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1" />
+                </LinearLayout>
+
+                <!-- Texto: type or paste, send. -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardSendText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="1dp"
+                    app:strokeColor="#33888888"
+                    app:cardBackgroundColor="@android:color/transparent">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="6dp"
+                        android:paddingVertical="4dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="8dp"
+                            android:textSize="18sp"
+                            android:text="✏️" />
+
+                        <EditText
+                            android:id="@+id/editShareText"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:background="@android:color/transparent"
+                            android:hint="@string/hint_share_text_pc"
+                            android:importantForAutofill="no"
+                            android:inputType="textMultiLine|textCapSentences"
+                            android:maxLines="4"
+                            android:minHeight="48dp"
+                            android:textSize="14sp" />
+
+                        <Button
+                            android:id="@+id/buttonSendShareText"
+                            style="@style/RoundedButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:minWidth="0dp"
+                            android:paddingHorizontal="16dp"
+                            android:paddingTop="8dp"
+                            android:paddingBottom="8dp"
+                            android:text="@string/btn_send_share_text" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Apps currently shown on the PC, each with its own controls. -->
+                <LinearLayout
+                    android:id="@+id/layoutActiveApps"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="vertical"
+                    android:visibility="gone" />
+
+                <Button
+                    android:id="@+id/buttonStopAll"
+                    style="@style/RoundedOutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:textColor="#E53935"
+                    android:visibility="gone"
+                    android:text="@string/btn_stop_all_shares" />
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- ===== Segment 2: Permisos ===== -->
+        <ScrollView
+            android:id="@+id/layoutPermissionsPanel"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingBottom="16dp">
+
+            <com.google.android.material.card.MaterialCardView
+                style="?attr/materialCardViewOutlinedStyle"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        style="@style/SectionTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/section_permissions_title" />
+
+                    <LinearLayout
+                        android:id="@+id/layoutPermissions"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginTop="4dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:textSize="12sp"
+                        android:textColor="#888888"
+                        android:text="@string/hint_samsung_sleeping_apps" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:textSize="12sp"
+                        android:textColor="#888888"
+                        android:text="@string/hint_permission_auto_revoke" />
+
+                    <!-- Only shown on Huawei/Honor (HarmonyOS): its own background manager is separate
+                         from Android's battery-optimization exemption, see MainActivity.setupHuaweiHelp. -->
+                    <TextView
+                        android:id="@+id/textHuaweiHint"
+                        android:visibility="gone"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:textSize="12sp"
+                        android:textColor="#888888"
+                        android:text="@string/hint_huawei_launch" />
+
+                    <Button
+                        android:id="@+id/buttonHuaweiLaunch"
+                        android:visibility="gone"
+                        style="@style/RoundedButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/btn_huawei_launch" />
+
+                    <Button
+                        android:id="@+id/buttonAppInfo"
+                        style="@style/RoundedButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/btn_app_info" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+
+                <!-- Deliberately de-emphasized: a debug affordance, not a primary action. -->
+                <TextView
+                    android:id="@+id/buttonSendLogs"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_horizontal"
+                    android:padding="8dp"
+                    android:textSize="11sp"
+                    android:textColor="#999999"
+                    android:text="@string/btn_send_logs" />
+
+                <!-- Section: "Acerca de" — version kept in sync by hand with the PC app's own
+                     <Version> (see NotiLink.App.csproj / Services/AppInfo.cs on the PC side). -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center_horizontal"
+                    android:layout_marginTop="24dp"
+                    android:paddingTop="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/app_name"
+                        android:textStyle="bold"
+                        android:textSize="14sp"
+                        android:textColor="?android:attr/textColorPrimary" />
+
+                    <TextView
+                        android:id="@+id/textAboutVersion"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textSize="11sp"
+                        android:textColor="#999999" />
+
+                    <TextView
+                        android:id="@+id/textAboutBuild"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="11sp"
+                        android:textColor="#999999" />
+
+                    <TextView
+                        android:id="@+id/textAboutAuthor"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="11sp"
+                        android:textColor="#999999" />
+                </LinearLayout>
+
+            </LinearLayout>
+        </ScrollView>
+
+        <!-- ===== Segment 3: Notificaciones (which apps get mirrored) ===== -->
+        <LinearLayout
+            android:id="@+id/layoutNotificationsPanel"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="2dp"
+                android:textSize="12sp"
+                android:textColor="#888888"
+                android:text="@string/hint_notifications_segment" />
+
+            <EditText
+                android:id="@+id/editAppSearch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:inputType="text"
+                android:maxLines="1"
+                android:hint="@string/hint_search_apps"
+                android:importantForAutofill="no" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="4dp">
+
+                <TextView
+                    android:id="@+id/tabCategoryAll"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="6dp"
+                    android:padding="8dp"
+                    android:gravity="center"
+                    android:textSize="12sp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="@drawable/bg_category_tab"
+                    android:text="@string/tab_apps_all" />
+
+                <TextView
+                    android:id="@+id/tabCategoryUser"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="6dp"
+                    android:padding="8dp"
+                    android:gravity="center"
+                    android:textSize="12sp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="@drawable/bg_category_tab"
+                    android:text="@string/tab_apps_user" />
+
+                <TextView
+                    android:id="@+id/tabCategorySystem"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:padding="8dp"
+                    android:gravity="center"
+                    android:textSize="12sp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="@drawable/bg_category_tab"
+                    android:text="@string/tab_apps_system" />
+            </LinearLayout>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerApps"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:clipToPadding="false"
+                android:paddingBottom="8dp" />
+        </LinearLayout>
+    </FrameLayout>
+</LinearLayout>

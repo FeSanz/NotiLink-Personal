@@ -1,0 +1,92 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\NotiLink.Core\NotiLink.Core.csproj" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2957.106" />
+    <PackageReference Include="QRCoder" Version="1.6.0" />
+    <!-- Wraps WASAPI's per-process audio session peak metering (see Services/AudioLevelMonitor.cs)
+         — the real-time waveform for phone audio scrcpy is currently forwarding, not a canned
+         animation like the media player's own decorative one (NotiLink has no access to that
+         app's actual audio data, only playback control — this is different: scrcpy's forwarded
+         audio really does play through a normal Windows audio session this PC can measure). -->
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <!-- DXGI Desktop Duplication for PC ↔ PC screen sharing (Services/ScreenCaptureService.cs) —
+         thin managed wrappers over the system's own d3d11.dll/dxgi.dll, no native binaries. -->
+    <PackageReference Include="Vortice.Direct3D11" Version="3.8.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="wwwroot\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <!-- Vendored, not committed — run windows/tools/fetch-scrcpy.ps1 first (see CLAUDE.md).
+         Globbed at build time, so this is silently empty until that script has run. Plain
+         Content items are NOT automatically exempt from single-file bundling: with
+         IncludeNativeLibrariesForSelfExtract=true (set in publish.ps1), the SDK sniffs every
+         published file's PE header and pulls anything that looks like a native binary — every
+         .exe/.dll here, scrcpy-server included despite its missing extension — into the single
+         file, then self-extracts them to a hidden per-run temp folder instead of leaving them
+         next to the exe. That silently broke "Compartir pantalla" (ScreenShareService.IsAvailable
+         checks File.Exists next to the exe). ExcludeFromSingleFile forces these to stay loose on
+         disk at tools\scrcpy\, which is exactly what scrcpy.exe needs since it's launched as a
+         real external process (relies on its DLLs/scrcpy-server sitting right beside it), not
+         linked in. -->
+    <Content Include="tools\scrcpy\**" Condition="Exists('tools\scrcpy')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
+    <Resource Include="app.ico" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- Versioned TFM (not plain net8.0-windows) is required to consume Windows.Media.Control's
+         GlobalSystemMediaTransportControlsSessionManager directly (see Services/PcMediaService.cs)
+         — that's a WinRT API, and only a Windows-SDK-versioned TFM gets the WinRT projection for
+         free without pulling in a separate CsWinRT/UWP interop package. 19041 (the 2004/20H1 SDK)
+         is where that API's Try*Async control surface is complete; SupportedOSPlatformVersion
+         below keeps the actual minimum-runtime requirement far lower (this only degrades to "no
+         PC media control" on anything older, it doesn't block the rest of the app from running). -->
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <!-- Kept in sync by hand with android/app/build.gradle.kts's versionName — see the
+         "Acerca de" section on both apps (Services/AppInfo.cs, ui/MainActivity.kt). -->
+    <Version>1.5.1</Version>
+  </PropertyGroup>
+
+  <!-- Embeds the actual build moment as a real compiled source file, read at runtime by
+       Services/AppInfo.cs for the "Acerca de" section — computed by MSBuild itself (not a
+       file timestamp, so it survives single-file publish where Assembly.Location isn't
+       reliable, see IL3000 in MainWindow). A generated .cs file rather than an
+       AssemblyMetadataAttribute added via BeforeTargets="CoreCompile": that approach raced
+       against the SDK's own GenerateAssemblyInfo target (also BeforeTargets="CoreCompile")
+       and lost silently, leaving AppInfo.BuildTimestamp permanently on its "desconocida"
+       fallback — a generated source file has no such ordering dependency. -->
+  <Target Name="GenerateBuildInfo" BeforeTargets="BeforeCompile;CoreCompile">
+    <PropertyGroup>
+      <BuildTimestamp>$([System.DateTime]::Now.ToString("yyyy-MM-dd HH:mm"))</BuildTimestamp>
+      <GeneratedBuildInfoFile>$(IntermediateOutputPath)BuildInfo.g.cs</GeneratedBuildInfoFile>
+    </PropertyGroup>
+    <ItemGroup>
+      <BuildInfoLines Include="namespace NotiLink.App.Services%3B" />
+      <BuildInfoLines Include="internal static class GeneratedBuildInfo { public const string BuildTimestamp = &quot;$(BuildTimestamp)&quot;%3B }" />
+      <Compile Include="$(GeneratedBuildInfoFile)" />
+    </ItemGroup>
+    <WriteLinesToFile File="$(GeneratedBuildInfoFile)" Lines="@(BuildInfoLines)" Overwrite="true" />
+  </Target>
+
+  <!-- Windows 11 Smart App Control blocks unsigned locally-built exes; sign with the
+       local dev certificate (see docs/DEV_SETUP.md) after every build so `dotnet run`
+       and direct exe launches keep working without a manual signing step each time. -->
+  <Target Name="SignOutputAssemblies" AfterTargets="Build">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)sign.ps1&quot; -TargetDir &quot;$(TargetDir.TrimEnd('\'))&quot;" ContinueOnError="true" />
+  </Target>
+
+</Project>

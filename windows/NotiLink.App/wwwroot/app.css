@@ -1,0 +1,2784 @@
+:root {
+  --bg: #f5f7fa;
+  /* --card-bg stays wallpaper-friendly (used by #list, .card, .now-playing-bar) — an earlier
+     attempt at fixing the header's washed-out look bumped this instead of --bar-bg below, which
+     also raised #list's own opacity and nearly blocked the wallpaper glow (and capped the
+     intensity slider's visible range well before 100). --bar-bg is the separate, more opaque
+     layer for bars that don't need to show wallpaper through them (#header,
+     .device-segment-group) — same fix, without the wallpaper regression. */
+  --card-bg: rgba(255, 255, 255, 0.55);
+  --bar-bg: rgba(255, 255, 255, 0.85);
+  --card-border: rgba(0, 0, 0, 0.1);
+  --text-primary: #000000;
+  --text-secondary: #666666;
+  --content-font-size: 13px;
+  --media-max-height: 220px;
+  --line-spacing: 6px;
+  --card-radius: 6px;
+}
+
+/* Dark mode is a deep navy blue, not flat black/gray — a plain gray dark theme
+   read as too plain against the app's blue accent, so every dark surface here
+   is tinted toward blue instead of neutral. */
+body.dark {
+  --bg: #11151f;
+  --card-bg: rgba(28, 37, 58, 0.6);
+  --bar-bg: rgba(28, 37, 58, 0.6);
+  --card-border: var(--card-border);
+  --text-primary: var(--text-primary);
+  --text-secondary: #9fadc9;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  font-family: "Segoe UI Variable Text", "Segoe UI", sans-serif;
+  overflow: hidden;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* The active device's phone wallpaper, shown very faintly behind the header/list —
+   a "second plane" rather than a real background: blurred and low-opacity so it
+   never competes with content, sitting under the header/list's own translucent
+   glass panels (which blur it further via backdrop-filter). */
+.wallpaper-bg {
+  position: fixed;
+  inset: -40px;
+  background-size: cover;
+  background-position: center;
+  filter: blur(22px);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  z-index: 0;
+}
+.wallpaper-bg.visible {
+  opacity: var(--wallpaper-opacity, 0.1);
+}
+body.dark .wallpaper-bg.visible {
+  opacity: var(--wallpaper-opacity-dark, 0.16);
+}
+
+#header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bar-bg);
+  border-bottom: 1px solid var(--card-border);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  /* #header's own backdrop-filter creates a stacking context — without an explicit position
+     + z-index here, that context sits below #list's (a later DOM sibling with the same implicit
+     stacking level), which is why the device menu was rendering behind the notification list
+     no matter what z-index it had: a child's z-index only ever competes within its own
+     stacking context, never against a later sibling context. */
+  position: relative;
+  z-index: 10;
+}
+
+.header-left, .header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.conn-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.conn-label-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.conn-label-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #dc3545;
+  flex-shrink: 0;
+  transition: background 0.2s ease;
+}
+.conn-label-dot.connected {
+  background: #2ecc71;
+}
+
+/* Device segmented control (ion-segment style) — one pill per paired device,
+   sitting in its own row under the header. Hidden entirely with no devices. */
+.device-segment-group {
+  flex: 0 0 auto;
+  display: none;
+  gap: 4px;
+  padding: 8px 14px;
+  background: var(--bar-bg);
+  border-bottom: 1px solid var(--card-border);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  overflow-x: auto;
+}
+.device-segment-group::-webkit-scrollbar {
+  height: 0;
+}
+
+.device-segment {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  /* A flat black tint here (unselected pill) was compounding with the header/segment-group's
+     own translucent white to read as muddy gray in light mode — a faint tint of the app's own
+     accent blue instead keeps it looking like part of the same UI, not a smudge. */
+  background: rgba(var(--accent-rgb), 0.05);
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+body.dark .device-segment {
+  background: rgba(255, 255, 255, 0.08);
+}
+.device-segment:hover {
+  background: rgba(var(--accent-rgb), 0.1);
+}
+body.dark .device-segment:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+/* The selected device is marked with a soft blue outline, not a solid fill —
+   a loud filled pill was too aggressive for something you look at constantly. */
+.device-segment.active {
+  background: rgba(var(--accent-rgb), 0.12);
+  border-color: rgba(var(--accent-rgb), 0.45);
+}
+body.dark .device-segment.active {
+  background: rgba(var(--accent-rgb), 0.18);
+}
+
+.segment-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #dc3545;
+  flex-shrink: 0;
+}
+.segment-dot.connected {
+  background: #2ecc71;
+}
+
+.segment-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.segment-rename-input {
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.85);
+  border: none;
+  outline: none;
+  border-radius: 4px;
+  padding: 1px 4px;
+  width: 110px;
+}
+body.dark .segment-rename-input {
+  background: rgba(0, 0, 0, 0.4);
+  color: #ffffff;
+}
+
+/* Toast — replaces the old blocking "Vinculado con X" modal pane with a
+   transient, non-blocking confirmation the user doesn't have to dismiss. */
+.toast-container {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  background: var(--toast-bg);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Same bottom-center pill language as .toast-container above, just bigger (a code needs to
+   actually be legible enough to compare against the phone) and self-managed rather than queued
+   through showToast — see window.showPairingCodeToast in app.js. */
+.pairing-code-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%) translateY(10px);
+  z-index: 100;
+  background: var(--toast-bg);
+  color: #ffffff;
+  padding: 14px 22px;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  text-align: center;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.pairing-code-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+.pairing-code-toast-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+}
+.pairing-code-toast-value {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  margin-top: 2px;
+}
+
+.battery-label, .wifi-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.wifi-label:empty {
+  display: none;
+}
+
+.cellular-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-secondary);
+}
+.cellular-label:empty {
+  display: none;
+}
+.cellular-line {
+  display: inline-flex;
+}
+
+.screen-share-stats {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.screen-share-stats:empty {
+  display: none;
+}
+
+.screen-share-icon-waves {
+  fill: var(--accent);
+}
+.screen-share-icon-phone {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.8;
+}
+#screen-share-btn:disabled .screen-share-icon-waves {
+  fill: var(--text-secondary);
+}
+#screen-share-btn:disabled .screen-share-icon-phone {
+  stroke: var(--text-secondary);
+}
+/* Mirroring right now — same solid-purple-when-active treatment as .audio-share-btn.active,
+   and now actually clickable-to-stop instead of only reflecting state. */
+#screen-share-btn.active {
+  background: var(--accent);
+}
+#screen-share-btn.active .screen-share-icon-waves {
+  fill: #ffffff;
+}
+#screen-share-btn.active .screen-share-icon-phone {
+  stroke: #ffffff;
+}
+#screen-share-btn.active:hover {
+  background: var(--accent-strong);
+}
+
+.audio-share-icon-speaker {
+  fill: var(--accent);
+}
+.audio-share-icon-waves {
+  stroke: var(--accent);
+  /* Real-time opacity + stroke-width pulse driven by the actual measured audio level while
+     transmitting (see window.setAudioLevel in app.js) — a short transition just smooths between
+     the ~100ms updates instead of visibly stepping. */
+  transition: opacity 0.08s linear, stroke-width 0.08s linear;
+}
+#audio-share-btn:disabled .audio-share-icon-speaker {
+  fill: var(--text-secondary);
+}
+#audio-share-btn:disabled .audio-share-icon-waves {
+  stroke: var(--text-secondary);
+}
+/* Transmitting right now — solid fill, same "this is actively doing something" treatment as
+   the shuffle button, so it reads unmistakably different from the idle purple-outline state. */
+.audio-share-btn.active {
+  background: var(--accent);
+}
+.audio-share-btn.active .audio-share-icon-speaker,
+.audio-share-btn.active .audio-share-icon-waves {
+  color: #ffffff;
+}
+.audio-share-btn.active .audio-share-icon-speaker {
+  fill: #ffffff;
+}
+.audio-share-btn.active .audio-share-icon-waves {
+  stroke: #ffffff;
+}
+.audio-share-btn.active:hover {
+  background: var(--accent-strong);
+}
+
+/* "No molestar" — same solid-purple-when-on treatment as .audio-share-btn.active, so it reads
+   with the same weight as this app's other "this is genuinely doing something right now" states. */
+#dnd-btn.active {
+  background: var(--accent);
+  color: #ffffff;
+}
+#dnd-btn.active:hover {
+  background: var(--accent-strong);
+}
+
+/* The volume button's own speaker icon — no "active" state to show (unlike audio-share-btn,
+   it's just a popup opener, not a toggle), so only idle/disabled colors are needed. */
+.volume-icon-speaker {
+  fill: var(--accent);
+}
+.volume-icon-waves {
+  stroke: var(--accent);
+}
+#volume-btn:disabled .volume-icon-speaker {
+  fill: var(--text-secondary);
+}
+#volume-btn:disabled .volume-icon-waves {
+  stroke: var(--text-secondary);
+}
+
+.icon-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 15px;
+  line-height: 1;
+  padding: 5px 7px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.icon-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* A small "+" badge on the 🔗 emoji — signals "this starts a new connection", distinct from
+   every other header icon that acts on the already-active device. */
+.pairing-btn {
+  position: relative;
+}
+.pairing-btn-plus {
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 12px;
+  text-align: center;
+  pointer-events: none;
+}
+.icon-btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.08);
+}
+body.dark .icon-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.text-btn {
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+/* Device options — a single "..." overflow menu (rename/apps/disconnect/remove) instead of
+   several separate always-visible icon buttons. */
+.device-menu-wrap {
+  position: relative;
+}
+
+.volume-menu-wrap {
+  position: relative;
+}
+.volume-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  align-items: center;
+  gap: 10px;
+  min-width: 190px;
+  background: var(--bg);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.2);
+  padding: 10px 14px;
+  z-index: 60;
+}
+.volume-menu.open {
+  display: flex;
+}
+.volume-label {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  width: 32px;
+  text-align: right;
+}
+.volume-slider {
+  flex: 1;
+  height: 14px;
+  margin: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+.volume-slider::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--accent) var(--volume-pct, 0%), rgba(127, 127, 127, 0.25) var(--volume-pct, 0%));
+}
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.device-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 200px;
+  background: var(--bg);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.2);
+  padding: 6px;
+  z-index: 60;
+}
+.device-menu.open {
+  display: flex;
+  flex-direction: column;
+}
+
+.device-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  text-align: left;
+  padding: 9px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.device-menu-item svg {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+.device-menu-item:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.06);
+}
+body.dark .device-menu-item:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+.device-menu-item:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.device-menu-item-danger {
+  color: #dc3545;
+}
+
+/* Persistent "now playing" bar (Spotify, YouTube Music, ...) — deliberately NOT a notification
+   card (the user asked for a fixed, always-in-place spot instead), so it lives here as its own
+   flex row between the header and the list. Always visible now, even with no active session
+   (renderNowPlaying shows an explicit "no hay nada reproduciéndose" state then) — an earlier
+   version hid it entirely with nothing playing, which made "genuinely nothing playing" look
+   identical to "the bar broke and disappeared", exactly what several real media bugs looked like
+   this same session. display:none/.visible is kept only as the initial-paint guard before the
+   very first renderNowPlaying() call ever runs. */
+/* Stays up for the whole call, not just a few seconds like a toast — deliberately more
+   prominent than a notification card, sitting between the header and the now-playing bar. Rich
+   mode (.call-bar-rich) renders when a real notification exists for the call (native SIM calls,
+   typically) — photo, sender, its own real actions (Contestar/Rechazar/Colgar), live duration.
+   Simple mode (.call-bar-simple) is the fallback for calls that never post a notification at all
+   (confirmed: WhatsApp while still ringing) — just the bare "a call is happening" signal, no
+   richer info is available for those (see docs/PROTOCOL.md's call.state). */
+.call-bar {
+  flex: 0 0 auto;
+  display: none;
+  background: rgba(31, 177, 85, 0.18);
+  border-bottom: 1px solid rgba(31, 177, 85, 0.5);
+  animation: call-bar-pulse 1.8s ease-in-out infinite;
+}
+.call-bar.visible {
+  display: block;
+}
+@keyframes call-bar-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+.call-bar-simple {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.call-bar-icon {
+  font-size: 18px;
+}
+.call-bar-rich {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px;
+}
+.call-bar-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.call-bar-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(31, 177, 85, 0.25);
+  font-size: 24px;
+}
+.call-bar-info {
+  flex: 1;
+  min-width: 0;
+}
+.call-bar-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.call-bar-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Reads like an actual in-call timer, not a footnote — bold, tabular digits so the width
+   doesn't jitter as seconds tick over. */
+.call-bar-timer {
+  font-size: 19px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+/* Still ringing, not answered yet — a static label instead of a ticking number, which would
+   otherwise look like the call was already connected (see isCallRinging in app.js). */
+.call-bar-timer-ringing {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.call-bar-actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+/* The real "in a call" look — circular, colored by intent, not a text pill — matching
+   .now-playing-btn-primary's sizing/shape so this genuinely reads as a panel extension of the
+   player above it rather than another notification card. */
+.call-bar-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #ffffff;
+  font-size: 18px;
+}
+.call-bar-btn-answer {
+  background: #1fb155;
+}
+.call-bar-btn-answer:hover {
+  background: #189246;
+}
+.call-bar-btn-hangup {
+  background: #dc3545;
+}
+.call-bar-btn-hangup:hover {
+  background: #c82333;
+}
+
+.now-playing-bar {
+  flex: 0 0 auto;
+  display: none;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  /* --bar-bg (same as #header/.device-segment-group), not --card-bg — this is a fixed bar with
+     its own controls, not a translucent content card, so it should read as crisp/solid the same
+     way the header does, not a bit grayer/more see-through like it did sharing --card-bg. */
+  background: var(--bar-bg);
+  border-bottom: 1px solid var(--card-border);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+.now-playing-bar.visible {
+  display: flex;
+}
+.now-playing-art {
+  position: relative;
+  width: var(--now-playing-art-size, 68px);
+  height: var(--now-playing-art-size, 68px);
+  border-radius: 6px;
+  flex-shrink: 0;
+  background-color: rgba(0, 0, 0, 0.08);
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+body.dark .now-playing-art {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+.now-playing-art-placeholder {
+  opacity: 0.5;
+}
+.now-playing-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.now-playing-title-row .now-playing-title {
+  min-width: 0;
+}
+/* A canned bouncing-bars animation, not a real audio-reactive one — NotiLink never has access to
+   actual audio data, only playback control, so this is purely decorative ("como si se estuviera
+   moviendo la música"), shown only while media.isPlaying is true (see renderNowPlaying in
+   app.js). Sits right of the title, above the progress row — small and discreet, not a feature
+   of its own. */
+.now-playing-eq {
+  display: none;
+  align-items: flex-end;
+  gap: 3px;
+  height: 15px;
+  flex-shrink: 0;
+}
+.now-playing-eq.playing {
+  display: flex;
+}
+.now-playing-eq span {
+  width: 3px;
+  height: 4px;
+  background: var(--accent);
+  border-radius: 1px;
+  animation: now-playing-eq-bounce 0.9s ease-in-out infinite;
+}
+.now-playing-eq span:nth-child(1) { animation-delay: 0s; }
+.now-playing-eq span:nth-child(2) { animation-delay: 0.2s; }
+.now-playing-eq span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes now-playing-eq-bounce {
+  0%, 100% { height: 4px; }
+  50% { height: 14px; }
+}
+.now-playing-info {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.now-playing-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.now-playing-subtitle {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Position/duration are only ever pushed on a real state change (song/play-pause/skip), never
+   streamed continuously — the visible tick between updates is interpolated client-side from the
+   last known position + wall-clock time elapsed since it arrived (see updateNowPlayingProgress
+   in app.js), frozen instead of interpolating while paused. */
+.now-playing-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+.now-playing-time {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+/* A native <input type="range"> rather than a hand-rolled draggable div — dragging, clicking to
+   jump, and touch all come free from the browser instead of hand-written pointer math. The
+   colored/uncolored split (played vs. remaining) is faked with a background gradient computed
+   in JS (see updateNowPlayingProgress), since range inputs have no standard CSS hook for "how
+   far along the value is". Disabled (canSeek: false) when the session doesn't declare
+   ACTION_SEEK_TO — same "never invented" rule every other control here already follows. */
+.now-playing-seek {
+  flex: 1;
+  height: 14px;
+  margin: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+.now-playing-seek::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 2px;
+  /* --seek-pct is set from app.js on every progress tick — a custom property is what actually
+     lets a value set on the <input> itself reach this pseudo-element's own background (custom
+     properties inherit into pseudo-elements; a plain .style.background on the input does not). */
+  background: linear-gradient(to right, var(--accent) var(--seek-pct, 0%), rgba(127, 127, 127, 0.25) var(--seek-pct, 0%));
+}
+.now-playing-seek::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 11px;
+  height: 11px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.now-playing-seek:hover::-webkit-slider-thumb,
+.now-playing-seek:active::-webkit-slider-thumb {
+  opacity: 1;
+}
+.now-playing-seek:disabled {
+  cursor: default;
+}
+.now-playing-seek:disabled::-webkit-slider-thumb {
+  opacity: 0 !important;
+}
+.now-playing-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  margin-right: 10px; /* a bit of breathing room off the bar's own edge padding */
+}
+.now-playing-btn {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  /* Same purple family as the primary play/pause button, just a soft tint instead of a solid
+     fill — reads as "part of the same control cluster" without literally duplicating its shape. */
+  background: rgba(var(--accent-rgb), 0.14);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.now-playing-btn:hover {
+  background: rgba(var(--accent-rgb), 0.24);
+  color: var(--accent-strong);
+}
+.now-playing-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+.now-playing-btn-primary {
+  width: 42px;
+  height: 42px;
+  background: var(--accent);
+  color: #ffffff;
+}
+.now-playing-btn-primary:hover {
+  background: var(--accent-strong);
+  color: #ffffff;
+}
+/* Red/filled when favorited (the near-universal "liked" heart convention) rather than the
+   purple used for transport controls — it needs to read as a distinct kind of state, not just
+   another playback action. */
+.now-playing-btn-favorite.active {
+  color: #e0245e;
+  background: rgba(224, 36, 94, 0.12);
+}
+.now-playing-btn-favorite.active svg path {
+  fill: currentColor;
+}
+.now-playing-btn-favorite.active:hover {
+  background: rgba(224, 36, 94, 0.22);
+}
+/* Solid purple fill when on — same treatment as the primary play/pause button, so "shuffle is
+   active" reads with the same weight as the app's other "this control is doing something right
+   now" states, distinct from favorite's softer tint. */
+.now-playing-btn-shuffle.active {
+  background: var(--accent);
+  color: #ffffff;
+}
+.now-playing-btn-shuffle.active:hover {
+  background: var(--accent-strong);
+  color: #ffffff;
+}
+/* Spotify's "modo aleatorio inteligente" badge — a small 4-point sparkle in the button's corner,
+   shown only on top of the already-active (solid purple) shuffle button, toggled via .smart on
+   the button itself (see renderNowPlaying in app.js). Gold rather than purple/white so it reads
+   as a distinct "extra" indicator, not just part of the shuffle icon itself. */
+/* Part of the shuffle icon's own <svg> now (see index.html), not a floating corner badge — just
+   toggles visibility in place, positioned by its own path coordinates. */
+/* Regular mode shows the crossing arrow; Smart Shuffle swaps it for the sparkle instead — never
+   both at once, matching how Spotify's own icon actually replaces one with the other rather
+   than just layering a badge on top. */
+.now-playing-shuffle-smart-badge {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.now-playing-btn-shuffle.smart .now-playing-shuffle-cross {
+  opacity: 0;
+}
+.now-playing-btn-shuffle.smart .now-playing-shuffle-smart-badge {
+  opacity: 1;
+}
+/* The small "this is on" dot — shown in both regular and Smart Shuffle modes, only while
+   shuffle is actually active. */
+.now-playing-shuffle-dot {
+  opacity: 0;
+}
+.now-playing-btn-shuffle.active .now-playing-shuffle-dot {
+  opacity: 1;
+}
+/* Which side is currently being controlled — phone (default) or this PC's own local playback
+   (see PcMediaService.cs) — as a real 3D card flip, not just a crossfade: the phone face spins
+   away and the PC face swings around to take its place (toggled by .pc-mode on the button from
+   app.js's click handler). */
+.now-playing-source-btn {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  perspective: 60px;
+}
+.now-playing-source-flip {
+  position: relative;
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  transform-style: preserve-3d;
+  transition: transform 0.5s cubic-bezier(0.4, 0.15, 0.2, 1);
+}
+.now-playing-source-btn.pc-mode .now-playing-source-flip {
+  transform: rotateY(180deg);
+}
+.now-playing-source-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.now-playing-source-face-pc {
+  transform: rotateY(180deg);
+}
+
+#list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  padding: 4px 0 60px; /* bottom: keeps the last card clear of the floating theme button */
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  /* No background of its own (blur only) — .card already applies --card-bg for its own
+     translucency/readability, and #list sitting on top of the wallpaper with that SAME
+     translucent layer meant every card was seen through two stacked --card-bg passes, not one.
+     That compounding was why the wallpaper intensity slider visibly stopped doing anything
+     past ~35%: the combined opacity was already blocking most of the wallpaper regardless of
+     how high the slider went. A single layer (the card itself) lets the full 0-100 range
+     actually show through. */
+}
+
+#theme-fab {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  font-size: 19px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+}
+#theme-fab:hover {
+  filter: brightness(1.1);
+}
+
+/* Sits directly left of #theme-fab, same shape/size/treatment — toggles the entire notification
+   list hidden/visible (not a per-card contraer). The chevron flips to point "back up" while
+   hidden, same rotate-on-toggle language as a card's own .collapse-btn.collapsed. */
+#list-collapse-fab {
+  position: fixed;
+  right: 72px;
+  bottom: 18px;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+}
+#list-collapse-fab:hover {
+  filter: brightness(1.1);
+}
+#list-collapse-fab svg {
+  transition: transform 0.2s ease;
+}
+#list-collapse-fab.active svg {
+  transform: rotate(180deg);
+}
+#list.list-hidden {
+  display: none;
+}
+
+.card {
+  position: relative;
+  padding: 12px 16px;
+  margin: 6px 10px;
+  border-radius: var(--card-radius, 6px);
+  background: var(--card-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--card-border);
+  /* --card-accent (Notification.color, set inline per-card by cardAccentStyle in app.js) — most
+     notifications never request one, in which case this just matches the border's own color at
+     a slightly wider width, imperceptible next to the other three sides. */
+  border-left-width: 3px;
+  border-left-color: var(--card-accent, var(--card-border));
+}
+
+/* Incoming/ongoing call — a calm accent, not a popup: a soft left border + faint tint,
+   just enough to catch the eye in the list without being alarming. */
+.card-call {
+  border-left: 3px solid var(--accent);
+  background: rgba(var(--accent-rgb), 0.06);
+}
+body.dark .card-call {
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+/* Silenciar, contraer, and eliminar all sit fixed at the top-right corner (always visible, not
+   a hover reveal) — eliminar rightmost, right next to contraer, moved up here from the bottom
+   footer per user feedback that the bottom-right corner wasn't where they expected to find it. */
+.delete-btn {
+  position: absolute;
+  top: 8px;
+  right: 14px;
+}
+.mute-btn {
+  position: absolute;
+  top: 8px;
+  right: 90px;
+}
+.collapse-btn {
+  position: absolute;
+  top: 8px;
+  right: 50px;
+}
+
+/* The time sits left of the whole mute/collapse/eliminar cluster, not inline in the header
+   text — bumped up in size/weight/opacity from a normal caption since it needs to actually read
+   as a piece of information here, not a faint timestamp. */
+.card-top-time {
+  position: absolute;
+  top: 11px;
+  right: 130px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+/* The notification's own real actions sit bottom-left; eliminar sits bottom-right — the one
+   action kept in this footer row rather than the top corner, since it's the one you don't
+   want to fire by accident while just glancing at the header. */
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
+}
+.card-footer-left {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.card-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+/* NotiLink's own accent pill button — used for the app's own actions (compartir al celular,
+   enviar archivo, abrir carpeta de logs), deliberately NOT the same shape as a notification's
+   real action pills (.action-btn, a soft-rectangle outline): fully rounded, solid-tinted, so
+   it reads unmistakably as NotiLink's own control. */
+.action-btn-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+  background: rgba(var(--accent-rgb), 0.14);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.action-btn-open:hover {
+  background: rgba(var(--accent-rgb), 0.24);
+}
+
+.delete-btn, .collapse-btn, .mute-btn, .open-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.delete-btn:hover, .collapse-btn:hover, .mute-btn:hover, .open-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+body.dark .delete-btn:hover, body.dark .collapse-btn:hover, body.dark .mute-btn:hover, body.dark .open-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+.delete-btn:hover {
+  background: #dc3545 !important;
+  color: #ffffff;
+}
+/* No other actions to share a footer row with — floats over the card's own bottom-right
+   corner instead of reserving a whole extra row just for itself (see cardHtml in app.js). Now
+   the only thing that ever lives down here (eliminar moved to the top-right corner, see
+   .delete-btn above). A permanent faint circular background, unlike the footer variant which
+   stays transparent until hover, keeps it legible if it ends up sitting over the tail of the
+   last message line. */
+.open-btn-floating {
+  position: absolute;
+  bottom: 8px;
+  right: 14px;
+  background: rgba(0, 0, 0, 0.06);
+}
+body.dark .open-btn-floating {
+  background: rgba(255, 255, 255, 0.08);
+}
+.collapse-btn.collapsed {
+  transform: rotate(-90deg);
+}
+
+.header-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 180px;
+}
+
+.app-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.app-label {
+  font-weight: 700;
+  font-size: calc(var(--content-font-size) - 1px);
+  color: var(--text-secondary);
+}
+
+.header-avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-right: 180px;
+}
+
+.avatar-wrap {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.avatar-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--bg);
+  background: var(--bg);
+}
+
+.header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.header-text .app-label {
+  line-height: 1.2;
+}
+.header-text .title {
+  margin-top: 0;
+}
+
+.title {
+  font-weight: 600;
+  font-size: calc(var(--content-font-size) + 1px);
+  color: var(--text-primary);
+  margin-top: 4px;
+}
+
+.collapsed-line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.empty-state {
+  height: 100%;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.msg {
+  margin-top: var(--line-spacing);
+}
+
+.body-text {
+  font-size: var(--content-font-size);
+  color: var(--text-primary);
+  margin-top: 2px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.35;
+}
+.body-text a {
+  color: var(--accent);
+  text-decoration: underline;
+  word-break: break-all;
+}
+/* Email/phone/account/reference-number/verification-code — same blue-underlined look as a real
+   link (see linkifyHtml in app.js), since the user only needs one visual cue for "this bit of
+   text is clickable"; unlike a link this copies to the clipboard instead of opening anything —
+   there's nowhere sensible to navigate an email address or a phone number to. */
+.copyable-token {
+  color: var(--accent);
+  text-decoration: underline;
+  word-break: break-all;
+  cursor: pointer;
+}
+/* Mine vs. theirs — same purple accent the rest of the app already uses for "this is the user's
+   own doing" (now-playing controls, shuffle-on), applied to text color here so a reply I sent is
+   visibly distinct from the other side's messages at a glance, same idea as WhatsApp's own
+   chat-bubble color split without needing full bubbles. */
+.msg-mine .body-text {
+  color: var(--accent-strong);
+}
+body.dark .msg-mine .body-text {
+  color: #b7a6ff;
+}
+/* Sender name — bold, the message text itself stays normal weight. Inherits whichever color
+   .msg-mine/.msg-theirs already set on .body-text (mine's purple included) rather than a color
+   of its own, so it's "the same text, just who said it emphasized" instead of a third tone. */
+.msg-sender {
+  font-weight: 700;
+}
+
+/* Mirrors Android's own native progress bar (Notification.EXTRA_PROGRESS) — Play Store installs,
+   Chrome downloads, WhatsApp sending a video, etc. Same purple accent used everywhere else in the
+   app for "something real is actively happening" (now-playing controls, shuffle-on). */
+.notif-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(var(--accent-rgb), 0.16);
+  overflow: hidden;
+  margin-top: 8px;
+}
+.notif-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  transition: width 0.25s ease;
+}
+/* Still preparing, no real percentage yet — a moving sweep instead of a frozen/empty bar, same
+   visual language as Android's own indeterminate progress bar. */
+.notif-progress-indeterminate {
+  width: 40% !important;
+  animation: notif-progress-sweep 1.2s ease-in-out infinite;
+}
+@keyframes notif-progress-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+
+.action-btn {
+  border: 1px solid var(--card-border);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 14px;
+  cursor: pointer;
+}
+.action-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+body.dark .action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* RemoteInput.getChoices() — canned quick replies (Gmail's "Sí"/"No"/"Tal vez" being the common
+   example), shown alongside the free-text reply row rather than replacing it. Always visible
+   (unlike .reply-row, which only opens once the user taps the reply action pill) — these are
+   meant to be a one-tap shortcut, not something that needs an extra step to reach first. */
+.reply-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.reply-choice-btn {
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 14px;
+  cursor: pointer;
+}
+.reply-choice-btn:hover {
+  background: rgba(var(--accent-rgb), 0.2);
+}
+
+.reply-row {
+  display: none;
+  gap: 6px;
+  margin-top: 8px;
+}
+.reply-row.open {
+  display: flex;
+}
+.reply-input {
+  flex: 1;
+  font-size: 13px;
+  padding: 5px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--card-border);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--text-primary);
+  outline: none;
+}
+body.dark .reply-input {
+  background: rgba(0, 0, 0, 0.3);
+}
+.reply-send-btn {
+  border: none;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.msg-image, .big-image {
+  margin-top: 6px;
+  max-width: 100%;
+  max-height: var(--media-max-height);
+  border-radius: 6px;
+  display: block;
+}
+
+/* Wraps any media shown inside the detail modal (see openDetailModal in app.js) with a small
+   zoom button in its corner — the compact card view already caps image height (var(--media-
+   max-height), often much smaller than the real image), and the detail modal itself caps it
+   further (see .detail-body .big-image below), so this is the one place to actually see it at
+   size. */
+.detail-image-wrap {
+  position: relative;
+  display: inline-block;
+  margin-top: 6px;
+}
+.detail-image-wrap img {
+  margin-top: 0;
+  cursor: zoom-in;
+}
+.detail-zoom-btn {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.detail-zoom-btn:hover {
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.link-preview {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  margin-top: 8px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  overflow: hidden;
+  text-decoration: none;
+  background: rgba(0, 0, 0, 0.03);
+}
+body.dark .link-preview {
+  background: rgba(255, 255, 255, 0.04);
+}
+.link-preview-image {
+  width: 76px;
+  height: 76px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.link-preview-text {
+  padding: 8px 10px 8px 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+.link-preview-image + .link-preview-text {
+  padding-left: 0;
+}
+.link-preview:not(:has(.link-preview-image)) .link-preview-text {
+  padding-left: 10px;
+}
+.link-preview-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.link-preview-desc {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.link-preview-domain {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  opacity: 0.8;
+  text-transform: lowercase;
+}
+
+/* Shared scrollbar styling for every scrollable panel — without an explicit track color,
+   Chromium falls back to an opaque white track regardless of theme, which is what made the
+   apps list's scrollbar look wrong in dark mode. */
+#list, .apps-list, .detail-body, .device-menu {
+  scroll-behavior: smooth;
+}
+#list::-webkit-scrollbar,
+.apps-list::-webkit-scrollbar,
+.detail-body::-webkit-scrollbar,
+.device-menu::-webkit-scrollbar {
+  width: 10px;
+}
+#list::-webkit-scrollbar-track,
+.apps-list::-webkit-scrollbar-track,
+.detail-body::-webkit-scrollbar-track,
+.device-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+#list::-webkit-scrollbar-thumb,
+.apps-list::-webkit-scrollbar-thumb,
+.detail-body::-webkit-scrollbar-thumb,
+.device-menu::-webkit-scrollbar-thumb {
+  background: var(--card-border);
+  border-radius: 5px;
+}
+
+.settings-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+/* Sits above .settings-overlay (z-index 50) — opened from a zoom button inside the detail modal,
+   which itself lives inside that overlay, so this needs to render on top of it. */
+.image-lightbox {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+  cursor: zoom-out;
+}
+.image-lightbox.open {
+  display: flex;
+}
+.image-lightbox-img {
+  max-width: 92vw;
+  max-height: 92vh;
+  object-fit: contain;
+  cursor: default;
+  transform-origin: center center;
+  will-change: transform;
+  user-select: none;
+}
+.image-lightbox-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+.image-lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+.settings-overlay.open {
+  display: flex;
+}
+
+.settings-modal {
+  width: 360px;
+  max-width: calc(100% - 40px);
+  max-height: calc(100% - 40px);
+  overflow-y: auto;
+  background: var(--bg);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text-primary);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.settings-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 14px;
+}
+.settings-row label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.settings-value {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.settings-row select,
+.settings-row input[type="range"] {
+  width: 100%;
+}
+.settings-row select {
+  font-size: 13px;
+  padding: 5px 6px;
+  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  background: var(--bg);
+  color: var(--text-primary);
+}
+
+.settings-checkbox label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.about-section {
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px solid var(--card-border);
+  text-align: center;
+}
+.about-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+.about-line {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.apps-modal {
+  width: 520px;
+  display: flex;
+  flex-direction: column;
+  /* Capped well below full window height (not just calc(100% - 40px)) — with many apps the
+     list used to stretch nearly edge-to-edge vertically before ever scrolling internally,
+     which made individual rows hard to track. */
+  max-height: min(620px, calc(100% - 40px));
+}
+
+.file-drop-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  max-height: 220px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+body.dark .file-drop-preview {
+  background: rgba(255, 255, 255, 0.06);
+}
+.file-drop-preview-img {
+  max-width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+}
+.file-drop-preview-generic {
+  font-size: 48px;
+}
+.file-drop-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+.file-drop-size {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+  margin-bottom: 14px;
+}
+.wallpaper-picker-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  max-height: 220px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 10px;
+}
+body.dark .wallpaper-picker-preview {
+  background: rgba(255, 255, 255, 0.06);
+}
+.wallpaper-picker-preview img {
+  max-width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+/* Optional (see setting-delete-animation): a quick slide-left + fade before the card actually
+   leaves the DOM, subtle and under a second so it reads as acknowledgment, not a showpiece. */
+@keyframes card-delete-slide {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(-24px); }
+}
+.card.deleting {
+  animation: card-delete-slide 0.22s ease-out forwards;
+  pointer-events: none;
+}
+
+.file-drop-actions {
+  display: flex;
+  gap: 10px;
+}
+.file-drop-actions .action-btn-open {
+  flex: 1;
+  justify-content: center;
+}
+
+.share-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 13px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  background: var(--bg);
+  color: var(--text-primary);
+  outline: none;
+  resize: vertical;
+}
+
+.apps-search {
+  flex: 0 0 auto;
+  font-size: 13px;
+  padding: 7px 10px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  background: var(--bg);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.apps-category-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.apps-category-tab {
+  flex: 1 1 0;
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  background: var(--bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.apps-category-tab:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+body.dark .apps-category-tab:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.apps-category-tab.active {
+  background: rgba(var(--accent-rgb), 0.12);
+  border-color: rgba(var(--accent-rgb), 0.4);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Purely a view filter over what's already been received (see app.js's isMessagingOrEmail) —
+   never hides anything from being received/counted, only from being rendered in #list. Same
+   icon in both states; off is just the outline in the header's normal icon color, on fills it
+   solid with the app's accent purple (matching the now-playing controls and the screen-share
+   icon) rather than only tinting the outline, so the active state reads at a glance. */
+.messaging-filter-btn.active {
+  color: var(--accent);
+}
+.messaging-filter-btn.active svg path {
+  fill: var(--accent);
+}
+.messaging-filter-btn.active:hover:not(:disabled) {
+  background: rgba(var(--accent-rgb), 0.14);
+}
+
+.apps-list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+
+.apps-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 2px;
+}
+
+.apps-row-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: rgba(128, 128, 128, 0.2);
+}
+
+.apps-row-label {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.apps-row-toggle {
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  border: none;
+  background: rgba(0, 0, 0, 0.2);
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+}
+.apps-row-toggle::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: left 0.15s ease;
+}
+.apps-row-toggle.on {
+  background: #2ecc71;
+}
+.apps-row-toggle.on::after {
+  left: 18px;
+}
+
+.detail-modal {
+  width: 480px;
+  display: flex;
+  flex-direction: column;
+  max-height: min(620px, calc(100% - 40px));
+}
+
+.detail-body {
+  overflow-y: auto;
+}
+.detail-header-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--card-border);
+}
+.detail-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+.detail-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.detail-header-text {
+  min-width: 0;
+}
+.detail-app-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.detail-app-row .detail-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+.detail-subject {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text-primary);
+  margin-top: 2px;
+}
+.detail-body .msg {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--card-border);
+}
+.detail-body .msg:last-child {
+  border-bottom: none;
+}
+.detail-body .body-text {
+  font-size: 14px;
+}
+.detail-body .msg-image,
+.detail-body .big-image {
+  max-height: 360px;
+}
+
+.pairing-modal {
+  width: 340px;
+  text-align: center;
+}
+
+.pairing-hint {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0 0 12px 0;
+}
+
+.pairing-qr-img {
+  width: 220px;
+  height: 220px;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 8px;
+}
+
+.pairing-ip {
+  margin-top: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--text-primary);
+}
+
+/* Belt-and-suspenders: guarantees contrast for the pairing modal even if it was still rendering
+   with stale theme vars at the instant it opened. */
+body.dark .settings-modal {
+  background: var(--surface-solid);
+}
+body.dark .pairing-ip,
+body.dark .pairing-hint,
+body.dark .settings-header {
+  color: #ffffff;
+}
+
+
+/* Images inside a notification card open full screen on click — pointer cursor says so. */
+.card img.msg-image,
+.card img.big-image {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* Ionic-style ripple played on a card's double-click (see playCardRipple in app.js). */
+.card-ripple-layer {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+}
+.card-ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(var(--accent-rgb), 0.28);
+  transform: scale(0);
+  opacity: 1;
+  animation: card-ripple-expand 0.6s ease-out forwards;
+}
+@keyframes card-ripple-expand {
+  to { transform: scale(1); opacity: 0; }
+}
+
+/* Answer/hang-up buttons in the plain "Llamada en curso" row — pushed to the right edge. */
+.call-bar-simple .call-bar-actions {
+  margin-left: auto;
+}
+
+
+/* Speaker/mute/hold in the call bar — muted-grey circles that turn purple when their state is on. */
+.call-bar-btn-tool {
+  background: rgba(127, 127, 127, 0.35);
+}
+.call-bar-btn-tool:hover {
+  background: rgba(127, 127, 127, 0.55);
+}
+.call-bar-btn-tool.active {
+  background: var(--accent);
+}
+.call-bar-simple .call-bar-timer {
+  font-variant-numeric: tabular-nums;
+  margin-left: 6px;
+  opacity: 0.85;
+}
+
+
+/* "Abrir" in the full-screen image view — sits just left of the close button. */
+.image-lightbox-open {
+  position: absolute;
+  top: 16px;
+  right: 64px;
+  height: 36px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+}
+.image-lightbox-open:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+
+/* Auto-rotate — same solid-purple-when-on treatment as #dnd-btn.active. */
+#rotation-btn.active {
+  background: var(--accent);
+  color: #ffffff;
+}
+#rotation-btn.active:hover {
+  background: var(--accent-strong);
+}
+
+
+/* Consecutive stickers/photos side by side (see groupMediaRuns in app.js). */
+.msg-media-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 6px;
+  margin-top: 6px;
+}
+.msg-media-row .msg-image,
+.msg-media-row .detail-image-wrap {
+  margin-top: 0;
+}
+.msg-media-row .msg-image {
+  max-width: calc(50% - 3px);
+  max-height: min(var(--media-max-height), 160px);
+  width: auto;
+}
+.detail-body .msg-media-row .msg-image {
+  max-width: 100%;
+  max-height: 200px;
+}
+
+
+/* --- Notification history panel (near full screen) --- */
+.history-overlay {
+  z-index: 55; /* above other overlays, below the image lightbox (60) */
+}
+.history-modal {
+  width: 94vw;
+  height: 92vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  padding: 16px 18px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+}
+.history-title {
+  font-weight: 700;
+  font-size: 16px;
+  flex: 1;
+}
+.history-count {
+  font-weight: 500;
+  opacity: 0.6;
+  font-size: 13px;
+}
+.history-clear-all {
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  margin-right: 8px;
+  background: rgba(229, 57, 53, 0.12);
+  color: #e53935;
+  font-weight: 600;
+  cursor: pointer;
+}
+.history-clear-all:hover {
+  background: rgba(229, 57, 53, 0.22);
+}
+.history-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0;
+}
+.history-filters input[type="search"] {
+  flex: 1 1 200px;
+}
+.history-filters input,
+.history-filters select {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+}
+.history-date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.history-list {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.hist-entry {
+  display: flex;
+  gap: 12px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-left: 3px solid var(--card-accent, var(--card-border));
+}
+.hist-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.hist-avatar-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(127, 127, 127, 0.2);
+}
+.hist-main {
+  flex: 1;
+  min-width: 0;
+}
+.hist-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.hist-app-icon {
+  width: 16px;
+  height: 16px;
+}
+.hist-app {
+  font-weight: 600;
+}
+.hist-subject {
+  font-weight: 700;
+  margin-top: 2px;
+}
+.hist-body {
+  font-size: 13px;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+.hist-msg + .hist-msg {
+  margin-top: 3px;
+}
+.hist-msg-mine {
+  color: var(--accent);
+}
+.hist-image {
+  display: block;
+  max-width: 220px;
+  max-height: 160px;
+  margin-top: 4px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.hist-image-big {
+  max-width: 320px;
+  max-height: 220px;
+}
+.hist-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.hist-action {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--accent);
+}
+.hist-times {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.hist-active {
+  color: #2e7d32;
+  font-weight: 600;
+}
+.hist-delete {
+  align-self: flex-start;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.hist-delete:hover {
+  background: rgba(229, 57, 53, 0.15);
+  color: #e53935;
+}
+.history-more {
+  display: block;
+  margin: 8px auto 16px;
+  padding: 8px 16px;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  background: var(--card-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+/* History panel: text colors and native controls follow the theme explicitly — the filter
+   <select>/<input type=date> popups and the entry text were low-contrast in dark mode. */
+.history-modal {
+  color: var(--text-primary);
+}
+.hist-body {
+  line-height: 1.35;
+}
+.hist-text {
+  white-space: pre-wrap;
+}
+.hist-body a,
+.hist-body .copyable-token {
+  color: var(--accent);
+  text-decoration: underline;
+  word-break: break-all;
+}
+.history-filters select option {
+  background: var(--bg);
+  color: var(--text-primary);
+}
+body.dark .history-modal {
+  background: var(--surface-solid);
+  color-scheme: dark;
+}
+body.dark .history-filters input,
+body.dark .history-filters select {
+  background: var(--surface-solid);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+body.dark .history-filters select option {
+  background: var(--surface-solid);
+  color: var(--text-primary);
+}
+body.dark .history-date,
+body.dark .history-count {
+  color: var(--text-secondary);
+  opacity: 1;
+}
+body.dark .history-title,
+body.dark .hist-subject,
+body.dark .hist-body {
+  color: var(--text-primary);
+}
+body.dark .hist-entry {
+  background: #1c2438;
+  border-color: var(--card-border);
+}
+body.dark .hist-head,
+body.dark .hist-times {
+  color: var(--text-secondary);
+}
+body.dark .hist-msg-mine {
+  color: #c4b6ff;
+}
+body.dark .hist-body a,
+body.dark .hist-body .copyable-token {
+  color: #6cb8ff;
+}
+body.dark .hist-action {
+  background: rgba(var(--accent-rgb), 0.28);
+  color: #d4c9ff;
+}
+body.dark .hist-active {
+  color: #7bd88a;
+}
+body.dark .history-more {
+  background: var(--surface-solid);
+  color: var(--text-primary);
+}
+body.dark .hist-delete {
+  color: var(--text-secondary);
+}
+
+.history-stats {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.history-older-select {
+  margin-right: 8px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+}
+body.dark .history-stats {
+  color: var(--text-secondary);
+}
+body.dark .history-older-select {
+  background: var(--surface-solid);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+
+/* --- Screen-share popup: "Pantalla completa" / "Solo una app" --- */
+.share-mode-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.share-mode-tab {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.share-mode-tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+  font-weight: 600;
+}
+.share-app-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  line-height: 1.35;
+}
+#share-app-search {
+  width: 100%;
+  padding: 7px 9px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 13px;
+}
+.share-app-list {
+  max-height: 320px;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.share-app-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+.share-app-item:hover {
+  background: rgba(var(--accent-rgb), 0.1);
+}
+.share-app-item.open {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.14);
+}
+.share-app-item img,
+.share-app-noicon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  font-size: 26px;
+  line-height: 36px;
+  text-align: center;
+}
+.share-app-label {
+  font-size: 11px;
+  text-align: center;
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.share-app-badge {
+  font-size: 10px;
+  color: var(--accent);
+  font-weight: 700;
+}
+body.dark #share-app-search {
+  background: var(--surface-solid);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+body.dark .share-app-badge {
+  color: #c4b6ff;
+}
+
+/* "Abrir la app en la PC" next to "Abrir en el teléfono"; when they float over the card corner,
+   the pair sits together in one absolutely-positioned group. */
+.open-btns-floating {
+  position: absolute;
+  bottom: 8px;
+  right: 14px;
+  display: flex;
+  gap: 4px;
+}
+.open-btns-floating .open-btn-floating {
+  position: static;
+}
+
+/* Recently opened apps (share popup) */
+.share-recent {
+  margin-bottom: 12px;
+}
+.share-recent-title {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+.share-recent-list {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.share-recent-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+.share-recent-item:hover {
+  background: rgba(var(--accent-rgb), 0.1);
+}
+.share-recent-item.open {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.14);
+}
+.share-recent-item img {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+.share-app-options {
+  margin: 4px 0 10px;
+  font-size: 13px;
+}
+.share-app-options summary {
+  cursor: pointer;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+/* Active transmissions pill in the header (see renderActiveShares in app.js) */
+.active-shares-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 14px;
+  background: var(--accent);
+  color: #ffffff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.active-shares-btn:hover {
+  background: var(--accent-strong);
+}
+.active-shares-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff5252;
+  animation: active-shares-pulse 1.4s ease-in-out infinite;
+}
+@keyframes active-shares-pulse {
+  50% { opacity: 0.35; }
+}
+.active-shares-menu {
+  min-width: 260px;
+}
+.active-shares-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  padding: 4px 8px 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.active-share-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 8px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.active-share-stop {
+  border: none;
+  border-radius: 6px;
+  padding: 4px 8px;
+  background: rgba(229, 57, 53, 0.12);
+  color: #e53935;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.active-share-stop:hover {
+  background: rgba(229, 57, 53, 0.22);
+}
+.active-share-stop-all {
+  margin-top: 4px;
+  color: #e53935;
+  font-weight: 600;
+}
+
+/* Red "−" floating over a recent app's corner, shown on hover, to remove it from the row. */
+.share-recent-item {
+  position: relative;
+}
+.share-recent-remove {
+  display: none;
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #e53935;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+.share-recent-item:hover .share-recent-remove {
+  display: flex;
+}
+.share-recent-remove:hover {
+  background: #c62828;
+}
+
+.active-share-return {
+  border: none;
+  border-radius: 6px;
+  padding: 4px 8px;
+  margin-left: auto;
+  background: rgba(var(--accent-rgb), 0.14);
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.active-share-return:hover {
+  background: rgba(var(--accent-rgb), 0.24);
+}
+body.dark .active-share-return {
+  color: #c4b6ff;
+}
+
+/* ---- Device identifier (letter/number on a colored circle, before the device name) ---- */
+.device-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--badge, var(--accent));
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  user-select: none;
+}
+.device-segment.active .device-badge { cursor: pointer; }
+.device-badge-lg {
+  min-width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  font-size: 19px;
+  padding: 0 8px;
+}
+.badge-modal { max-width: 380px; }
+.badge-preview-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 6px 0 14px;
+}
+.badge-preview-name { font-weight: 600; font-size: 15px; }
+.badge-field-label {
+  display: block;
+  font-size: 12px;
+  opacity: 0.7;
+  margin: 10px 0 6px;
+}
+.badge-text-input {
+  width: 72px;
+  padding: 8px 10px;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  background: transparent;
+  color: inherit;
+}
+.badge-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.badge-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  outline: none;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12) inset;
+}
+.badge-swatch.selected { border-color: var(--text, #111); box-shadow: 0 0 0 2px #fff inset; }
+body.dark .badge-swatch.selected { border-color: #fff; box-shadow: 0 0 0 2px #1e1e24 inset; }
+.badge-swatch-custom {
+  position: relative;
+  overflow: hidden;
+  background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+}
+.badge-swatch-custom input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+  border: none;
+  padding: 0;
+}
+.badge-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 18px;
+}
+.active-shares-title .device-badge { margin-right: 6px; vertical-align: middle; }
+
+/* ---- Reordering device tabs (drag & drop) ---- */
+.device-segment[draggable="true"] { -webkit-user-drag: element; }
+.device-segment.dragging { opacity: 0.45; }
+.device-segment.drop-before { box-shadow: -3px 0 0 0 var(--accent); }
+.device-segment.drop-after { box-shadow: 3px 0 0 0 var(--accent); }
+
+.show-all-btn {
+  margin-top: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.show-all-btn:hover { color: var(--text-primary); }

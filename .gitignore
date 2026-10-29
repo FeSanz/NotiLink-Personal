@@ -1,0 +1,32 @@
+# Android
+android/.gradle/
+android/.kotlin/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/*.iml
+android/captures/
+android/.cxx/
+
+# Windows / .NET
+windows/**/bin/
+windows/**/obj/
+windows/.vs/
+*.user
+
+# Vendored third-party tool (scrcpy) — fetched by windows/tools/fetch-scrcpy.ps1, not
+# committed: ~25MB of prebuilt binaries with no place in source control. See CLAUDE.md.
+windows/NotiLink.App/tools/scrcpy/
+
+# Portable migration package (see dist/NotiLink-Portable/LEEME.txt) — a ~180MB self-contained
+# build artifact plus an exported signing certificate, has no place in source control.
+dist/
+
+# IDE (root-level — android/.idea/ above is the Android Studio one, this is JetBrains
+# Rider/IntelliJ opening the repo root, e.g. while working on the .NET side)
+/.idea/
+
+# OS
+.DS_Store
+Thumbs.db

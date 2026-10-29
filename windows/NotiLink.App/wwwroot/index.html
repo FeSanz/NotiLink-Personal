@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="theme.css">
+</head>
+<body>
+  <div id="wallpaper-bg" class="wallpaper-bg"></div>
+
+  <div id="device-segment-group" class="device-segment-group" style="display:none;"></div>
+
+  <div id="header">
+    <div class="header-left">
+      <span id="conn-label" class="conn-label">
+        <span class="conn-label-icon">📱</span>
+        <span id="conn-label-dot" class="conn-label-dot"></span>
+        <span id="conn-label-text">Sin dispositivo</span>
+      </span>
+      <button id="peer-screen-chip" class="peer-screen-chip" type="button" title="Clic para dejar de compartir"></button>
+    </div>
+    <div class="header-right">
+      <span id="cellular-label" class="cellular-label"></span>
+      <span id="wifi-label" class="wifi-label" title=""></span>
+      <span id="battery-label" class="battery-label"></span>
+      <span id="screen-share-stats" class="screen-share-stats"></span>
+      <button id="screen-share-btn" class="icon-btn" title="Compartir pantalla">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <rect class="screen-share-icon-phone" x="6" y="1" width="12" height="22" rx="2.2"/>
+          <g class="screen-share-icon-waves" transform="translate(6.9 7.6) scale(0.636)">
+            <path d="M1 18v3h3c0-1.66-1.34-3-3-3z"/>
+            <path d="M1 14v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7z"/>
+            <path d="M1 10v2c4.97 0 9 4.03 9 9h2c0-6.08-4.92-11-11-11z"/>
+          </g>
+        </svg>
+      </button>
+      <div class="device-menu-wrap active-shares-wrap" id="active-shares-wrap" style="display:none">
+        <button id="active-shares-btn" class="active-shares-btn" type="button" title="Transmisiones activas"><span class="active-shares-dot"></span><span id="active-shares-count">0</span></button>
+        <div id="active-shares-menu" class="device-menu active-shares-menu"></div>
+      </div>
+      <button id="audio-share-btn" class="icon-btn audio-share-btn" title="Transmitir audio del celular">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <!-- Headphones — distinct from the volume button's speaker icon now that both exist.
+               Keeps the *same* two class names the real-time audio-reactive waveform already
+               targets (see window.setAudioLevel in app.js): the band (stroke-based, like the old
+               speaker's wave-lines) pulses with the actual measured level, the ear cups (solid
+               fill, like the old speaker cone) get the same idle/disabled/active color treatment
+               as before — no JS/CSS state-handling changes needed, only this shape swap. -->
+          <path class="audio-share-icon-waves" d="M3 18v-6a9 9 0 0 1 18 0v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <path class="audio-share-icon-speaker" d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
+        </svg>
+      </button>
+      <div class="volume-menu-wrap">
+        <button id="volume-btn" class="icon-btn" title="Volumen del celular">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path class="volume-icon-speaker" d="M4 9v6h4l5 5V4L8 9H4z"/>
+            <path class="volume-icon-waves" d="M16.3 8.7a5 5 0 0 1 0 6.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path class="volume-icon-waves" d="M18.8 6.2a9 9 0 0 1 0 11.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <div id="volume-menu" class="volume-menu">
+          <input id="volume-slider" class="volume-slider" type="range" min="0" max="0" value="0" step="1">
+          <span id="volume-label" class="volume-label">0%</span>
+        </div>
+      </div>
+      <!-- A circle with a horizontal dash — Samsung's own Do Not Disturb glyph, not the stock
+           Android crescent moon (per explicit request). -->
+      <button id="rotation-btn" class="icon-btn" title="Rotación automática del celular">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="8" y="3" width="8" height="13" rx="1.6"/>
+          <path d="M3 15a9 9 0 0 0 15.5 4.2"/>
+          <polyline points="19 15.5 18.5 19.3 14.8 18.6"/>
+        </svg>
+      </button>
+      <button id="dnd-btn" class="icon-btn" title="No molestar del celular">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>
+          <line x1="7.5" y1="12" x2="16.5" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button id="filter-messaging-btn" class="icon-btn messaging-filter-btn" title="Solo mensajería y correo">
+        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+      </button>
+      <div class="device-menu-wrap">
+        <button id="device-menu-btn" class="icon-btn" title="Opciones del dispositivo">
+          <svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="5" r="2.4" fill="currentColor"/><circle cx="12" cy="12" r="2.4" fill="currentColor"/><circle cx="12" cy="19" r="2.4" fill="currentColor"/></svg>
+        </button>
+        <div id="device-menu" class="device-menu">
+          <button class="device-menu-item" id="device-menu-rename" type="button">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            Renombrar
+          </button>
+          <button class="device-menu-item" id="device-menu-badge" type="button">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 16V8h3a2 2 0 0 1 0 4h-3"/></svg>
+            Identificador (letra y color)
+          </button>
+          <button class="device-menu-item" id="device-menu-move-left" type="button">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            Mover a la izquierda
+          </button>
+          <button class="device-menu-item" id="device-menu-move-right" type="button">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+            Mover a la derecha
+          </button>
+          <button class="device-menu-item" id="device-menu-apps" type="button">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg>
+            Apps con notificaciones
+          </button>
+          <button class="device-menu-item" id="device-menu-wallpaper" type="button">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+            Fondo personalizado
+          </button>
+          <button class="device-menu-item" id="device-menu-share" type="button">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/></svg>
+            Compartir al celular
+          </button>
+          <button class="device-menu-item" id="device-menu-ring" type="button">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            Buscar celular (sonar)
+          </button>
+          <button class="device-menu-item" id="device-menu-power" type="button">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v10M18.36 6.64a9 9 0 1 1-12.73 0"/></svg>
+            <span id="device-menu-power-label">Desconectar</span>
+          </button>
+          <button class="device-menu-item device-menu-item-danger" id="device-menu-remove" type="button">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z"/></svg>
+            Eliminar dispositivo
+          </button>
+        </div>
+      </div>
+      <button id="pcs-btn" class="icon-btn pcs-btn" title="PCs vinculadas (mensajes y archivos entre PCs)">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="1" y="5" width="9.5" height="8" rx="1.2"/><path d="M3.5 17.5h4.5M5.75 13v4.5"/>
+          <rect x="13.5" y="5" width="9.5" height="8" rx="1.2"/><path d="M16 17.5h4.5M18.25 13v4.5"/>
+          <path d="M11.2 9h1.6" stroke-dasharray="1 1.2"/>
+        </svg>
+        <span id="pcs-btn-badge" class="pcs-btn-badge"></span>
+      </button>
+      <button id="pairing-btn" class="icon-btn pairing-btn" title="Vincular dispositivo">🔗<span class="pairing-btn-plus">+</span></button>
+      <button id="settings-btn" class="icon-btn" title="Ajustes">⚙️</button>
+      <button id="expand-all-btn" class="icon-btn text-btn" title="Expandir o contraer todas las notificaciones">⌄ Expandir todas</button>
+      <button id="delete-all-btn" class="icon-btn text-btn" title="Borrar todas las notificaciones">🗑️ Borrar todas</button>
+    </div>
+  </div>
+
+  <div id="now-playing-bar" class="now-playing-bar">
+    <button id="now-playing-source-btn" class="now-playing-btn now-playing-source-btn" title="Controlando: teléfono (clic para cambiar a la PC)">
+      <!-- A real 3D card flip (perspective + rotateY), not just an opacity crossfade — clicking
+           spins the phone face away and brings the PC face around to the front, toggled by
+           .pc-mode on the button (see applyNowPlayingSourceUi in app.js). Each face is
+           backface-hidden and the "back" face is pre-rotated 180° so it reads right-way-round
+           once it swings into view instead of mirrored — the standard flip-card technique. -->
+      <span class="now-playing-source-flip">
+        <svg class="now-playing-source-face now-playing-source-face-phone" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="7" y="2" width="10" height="19" rx="1.5"/>
+          <line x1="10.5" y1="18" x2="13.5" y2="18"/>
+        </svg>
+        <svg class="now-playing-source-face now-playing-source-face-pc" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="4" width="20" height="13" rx="1.5"/>
+          <line x1="8" y1="21" x2="16" y2="21"/>
+          <line x1="12" y1="17" x2="12" y2="21"/>
+        </svg>
+      </span>
+    </button>
+    <div id="now-playing-art" class="now-playing-art">
+      <svg class="now-playing-art-placeholder" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3z"/></svg>
+    </div>
+    <div class="now-playing-info">
+      <div class="now-playing-title-row">
+        <div id="now-playing-title" class="now-playing-title"></div>
+        <div id="now-playing-eq" class="now-playing-eq"><span></span><span></span><span></span></div>
+      </div>
+      <div id="now-playing-subtitle" class="now-playing-subtitle"></div>
+      <div id="now-playing-progress-row" class="now-playing-progress-row">
+        <span id="now-playing-elapsed" class="now-playing-time">0:00</span>
+        <div class="now-playing-seek-wrap">
+          <canvas id="now-playing-wave" class="now-playing-wave" aria-hidden="true"></canvas>
+          <input id="now-playing-seek" class="now-playing-seek" type="range" min="0" max="0" value="0" step="1000">
+        </div>
+        <span id="now-playing-duration" class="now-playing-time">0:00</span>
+      </div>
+    </div>
+    <div class="now-playing-controls">
+      <button id="now-playing-open" class="now-playing-btn" title="Abrir en el teléfono">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+          <polyline points="15 3 21 3 21 9"/>
+          <line x1="10" y1="14" x2="21" y2="3"/>
+        </svg>
+      </button>
+      <button id="now-playing-shuffle" class="now-playing-btn now-playing-btn-shuffle" title="Aleatorio">
+        <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <!-- Always present, both modes: the arrow running bottom-left to top-right, and the
+               second arrow's ENDING half — middle to bottom-right, with its own arrowhead. Only
+               that second arrow's STARTING half (near top-left) differs by mode: a plain line
+               segment normally, replaced by the sparkle in Smart Shuffle — matching Spotify's
+               own icon, where just that one starting stub becomes the sparkle while its
+               arrowhead at the bottom-right keeps pointing exactly where it always did. -->
+          <polyline points="16 3 21 3 21 8"/>
+          <line x1="4" y1="20" x2="21" y2="3"/>
+          <polyline points="21 16 21 21 16 21"/>
+          <line x1="15" y1="15" x2="21" y2="21"/>
+          <line id="now-playing-shuffle-cross" class="now-playing-shuffle-cross" x1="4" y1="4" x2="9" y2="9"/>
+          <!-- Smart Shuffle only: sparkle where that starting stub used to be. Solid fill, no
+               stroke, since the parent svg's stroke/fill defaults would otherwise render it
+               hollow. -->
+          <path id="now-playing-shuffle-smart-badge" class="now-playing-shuffle-smart-badge"
+                d="M6.5,1.4 L8,5.2 L11.8,6.7 L8,8.2 L6.5,12 L5,8.2 L1.2,6.7 L5,5.2 Z"
+                fill="currentColor" stroke="none"/>
+          <!-- Small "this is on" dot, both modes — matches Spotify's own active-toggle dot. -->
+          <circle id="now-playing-shuffle-dot" class="now-playing-shuffle-dot" cx="4" cy="21" r="1.3" fill="currentColor" stroke="none"/>
+        </svg>
+      </button>
+      <button id="now-playing-prev" class="now-playing-btn" title="Anterior">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+      </button>
+      <button id="now-playing-playpause" class="now-playing-btn now-playing-btn-primary" title="Reproducir/Pausar">
+        <svg id="now-playing-playpause-icon" viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
+      </button>
+      <button id="now-playing-next" class="now-playing-btn" title="Siguiente">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M6 18l8.5-6L6 6zM16 6h2v12h-2z"/></svg>
+      </button>
+      <button id="now-playing-favorite" class="now-playing-btn now-playing-btn-favorite" title="Favorito">
+        <svg viewBox="0 0 24 24" width="19" height="19"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="call-bar" class="call-bar"></div>
+
+  <!-- Only on a linked PC's tab (body.peer-tab): write to it / send files, clipboard, a nudge. -->
+  <div id="peer-feed-bar" class="peer-feed-bar">
+    <button id="peer-feed-attach" class="icon-btn" type="button" title="Enviar archivos (o arrástralos a la ventana)">📎</button>
+    <button id="peer-feed-clip" class="icon-btn" type="button" title="Enviar mi portapapeles">📋</button>
+    <!-- A textarea, not <input type="text">: a single-line input silently drops the line breaks
+         of anything pasted into it, so a pasted paragraph arrived as one run-on line. -->
+    <textarea id="peer-feed-input" class="pcs-input peer-feed-input" rows="1" autocomplete="off" placeholder="Escribe un mensaje… (Enter envía · Shift+Enter nueva línea)"></textarea>
+    <button id="peer-feed-send" class="action-btn-open" type="button">Enviar</button>
+    <button id="peer-feed-view" class="icon-btn" type="button" title="Ver su pantalla">🖥️</button>
+    <button id="peer-feed-share" class="icon-btn peer-feed-share" type="button" title="Compartir mi pantalla con esta PC">📡</button>
+    <button id="peer-feed-nudge" class="icon-btn" type="button" title="Llamar la atención">👋</button>
+    <button id="peer-feed-chat" class="icon-btn" type="button" title="Abrir el chat completo">💬</button>
+    <input id="peer-feed-file-input" type="file" multiple hidden>
+  </div>
+
+  <div id="list"></div>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Non-modal, auto-dismissing — unlike the "Vincular dispositivo" pairing modal (deliberately
+       opened by the user), this appears unsolicited whenever a phone's handshake needs a fresh
+       6-digit confirm, including a spurious one for an already-paired phone (a confirmed real
+       bug, mostly fixed at the source — see PairedDeviceStore's own locking — but this stays
+       low-friction as a safety net regardless: a device that's actually already paired just sees
+       this flash by and disappear, rather than a full-screen modal demanding attention). -->
+  <div id="pairing-code-toast" class="pairing-code-toast" title="Toca para cerrar">
+    <div class="pairing-code-toast-label">Confirma este código en el celular:</div>
+    <div id="pairing-code-toast-value" class="pairing-code-toast-value"></div>
+  </div>
+
+  <!-- Hides the whole notification list momentarily — not the same as a card's own
+       contraer/expandir, this is a global show/hide of the entire panel. Always starts expanded
+       on launch (see app.js — deliberately not persisted to localStorage), only hidden once the
+       user actually toggles it this session. -->
+  <button id="list-collapse-fab" title="Ocultar notificaciones">
+    <svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+  <button id="theme-fab" title="Modo oscuro">🌙</button>
+
+  <div id="settings-overlay" class="settings-overlay">
+    <div class="settings-modal settings-v2">
+      <div class="settings-header">
+        <span><span class="set-modal-title">Ajustes</span><span class="set-modal-sub">Personaliza NotiLink a tu manera.</span></span>
+        <button id="settings-close" class="icon-btn" title="Cerrar">✕</button>
+      </div>
+
+      <div class="settings-sections">
+      <section class="set-section">
+        <div class="set-head"><span class="set-ic"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.6-.8 1.6-1.6 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.7-1.6 1.6-1.6H16a5 5 0 0 0 5-5c0-4-4-7.4-9-7.4Z"/><circle cx="7.5" cy="11.5" r="1.2"/><circle cx="10.5" cy="7.5" r="1.2"/><circle cx="15.5" cy="7.5" r="1.2"/></svg></span><span><span class="set-title">Apariencia</span></span></div>
+        <div class="settings-row set-row set-accent">
+          <span class="set-label">
+            <span class="lbl">Color de acento</span>
+            <span class="set-help" id="accent-help">Botones, selección, fondo y la app del celular usan este color.</span>
+          </span>
+          <span class="set-ctrl"><span id="accent-swatches" class="color-swatches"></span></span>
+        </div>
+        <label class="settings-row set-row set-toggle">
+          <span class="set-label">
+            <span class="lbl">Un tono por día</span>
+            <span class="set-help">Cada día de la semana usa su propio color; cambia solo a las 12 a.m.</span>
+          </span>
+          <span class="set-ctrl"><input type="checkbox" id="setting-accent-daily"></span>
+        </label>
+        <div class="settings-row set-row set-week" id="accent-week-row">
+          <span class="set-label">
+            <span class="lbl">Colores de la semana</span>
+            <span class="set-help">Toca un día para elegir su color. <button type="button" id="accent-week-reset" class="link-btn">Restablecer</button></span>
+          </span>
+          <span class="set-ctrl"><span id="accent-week" class="accent-week"></span></span>
+        </div>
+        <label class="settings-row set-row set-toggle">
+          <span class="set-label">
+            <span class="lbl">Color del reproductor según la carátula</span>
+            <span class="set-help">La barra y las ondas toman el color de la portada de la canción; si no, usan el color de acento.</span>
+          </span>
+          <span class="set-ctrl"><input type="checkbox" id="setting-np-art-color"></span>
+        </label>
+        <label class="settings-row set-row set-toggle">
+          <span class="set-label">
+            <span class="lbl">Ondas al ritmo de la música</span>
+            <span class="set-help">Siguen los graves, medios y agudos de lo que suena en esta PC o en el celular (allí requiere el permiso de audio). Solo se analiza el sonido, no se graba nada.</span>
+          </span>
+          <span class="set-ctrl"><input type="checkbox" id="setting-np-reactive"></span>
+        </label>
+        <label class="settings-row set-row set-toggle">
+          <span class="set-label">
+            <span class="lbl">Modo oscuro</span>
+            <span class="set-help">También con el botón de la esquina inferior derecha.</span>
+          </span>
+          <span class="set-ctrl"><input type="checkbox" id="setting-dark-mode"></span>
+        </label>
+        <div class="settings-row set-row set-slider">
+          <span class="set-label">
+            <span class="lbl">Intensidad del fondo de pantalla <span id="setting-wallpaper-intensity-value" class="settings-value"></span></span>
+            <span class="set-help">El fondo del celular, difuminado detrás de las notificaciones.</span>
+          </span>
+          <span class="set-ctrl"><input type="range" id="setting-wallpaper-intensity" min="0" max="35" step="5"></span>
+        </div>
+      </section>
+      <section class="set-section">
+        <div class="set-head"><span class="set-ic"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M9 20V9"/></svg></span><span><span class="set-title">Tarjetas y texto</span></span></div>
+        <div class="settings-row set-row set-slider">
+          <span class="set-label">
+            <span class="lbl">Tamaño de letra <span id="setting-font-size-value" class="settings-value"></span></span>
+          </span>
+          <span class="set-ctrl"><input type="range" id="setting-font-size" min="11" max="20" step="1"></span>
+        </div>
+        <div class="settings-row set-row set-slider">
+          <span class="set-label">
+            <span class="lbl">Espaciado entre mensajes <span id="setting-line-spacing-value" class="settings-value"></span></span>
+          </span>
+          <span class="set-ctrl"><input type="range" id="setting-line-spacing" min="0" max="20" step="1"></span>
+        </div>
+        <div class="settings-row set-row set-slider">
+          <span class="set-label">
+            <span class="lbl">Tamaño de imágenes/stickers <span id="setting-media-size-value" class="settings-value"></span></span>
+          </span>
+          <span class="set-ctrl"><input type="range" id="setting-media-size" min="100" max="400" step="10"></span>
+        </div>
+        <div class="settings-row set-row set-slider">
+          <span class="set-label">
+            <span class="lbl">Redondez de las notificaciones <span id="setting-card-radius-value" class="settings-value"></span></span>
+          </span>
+          <span class="set-ctrl"><input type="range" id="setting-card-radius" min="0" max="24" step="2"></span>
+        </div>
+        <div class="settings-row set-row set-slider">
+          <span class="set-label">
+            <span class="lbl">Tamaño de la carátula (reproductor) <span id="setting-now-playing-art-size-value" class="settings-value"></span></span>
+          </span>
+          <span class="set-ctrl"><input type="range" id="setting-now-playing-art-size" min="44" max="120" step="4"></span>
+        </div>
+      </section>
+      <section class="set-section">
+        <div class="set-head"><span class="set-ic"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg></span><span><span class="set-title">Notificaciones</span></span></div>
+        <label class="settings-row set-row set-toggle">
+          <span class="set-label">
+            <span class="lbl">Vista previa de multimedia</span>
+            <span class="set-help">Fotos, stickers y GIFs dentro de la notificación.</span>
+          </span>
+          <span class="set-ctrl"><input type="checkbox" id="setting-show-media"></span>
+        </label>
+        <div class="settings-row set-row" id="settings-media-mode-row">
+          <span class="set-label">
+            <span class="lbl">Cuando hay varias imágenes en un chat</span>
+          </span>
+          <span class="set-ctrl"><select id="setting-media-mode">
+            <option value="all">Mostrar todas</option>
+            <option value="lastOnly">Solo la última</option>
+          </select></span>
+        </div>
+        <div class="settings-row set-row">
+          <span class="set-label">
+            <span class="lbl">Mensajes a mostrar por chat</span>
+          </span>
+          <span class="set-ctrl"><select id="setting-message-mode">
+            <option value="last">Solo el último</option>
+            <option value="count">Los últimos...</option>
+          </select></span>
+        </div>
+        <div class="settings-row set-row" id="settings-message-count-row">
+          <span class="set-label"><span class="lbl">Cantidad</span></span>
+          <span class="set-ctrl"><select id="setting-message-count"></select></span>
+        </div>
+        <label class="settings-row set-row set-toggle">
+          <span class="set-label">
+            <span class="lbl">Expandir al llegar un mensaje nuevo</span>
+          </span>
+          <span class="set-ctrl"><input type="checkbox" id="setting-auto-expand"></span>
+        </label>
+        <label class="settings-row set-row set-toggle">
+          <span class="set-label">
+            <span class="lbl">Vista previa de enlaces</span>
+            <span class="set-help">Consulta la página en internet para mostrar título e imagen.</span>
+          </span>
+          <span class="set-ctrl"><input type="checkbox" id="setting-link-previews"></span>
+        </label>
+        <label class="settings-row set-row set-toggle">
+          <span class="set-label">
+            <span class="lbl">Animar las notificaciones</span>
+            <span class="set-help">Al borrar, contraer o expandir.</span>
+          </span>
+          <span class="set-ctrl"><input type="checkbox" id="setting-card-animations"></span>
+        </label>
+      </section>
+      <section class="set-section">
+        <div class="set-head"><span class="set-ic"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M11 18h2"/></svg></span><span><span class="set-title">Celular</span></span></div>
+        <label class="settings-row set-row set-toggle">
+          <span class="set-label">
+            <span class="lbl">Quitar la notificación de conexión</span>
+            <span class="set-help">La notificación de NotiLink en el celular se oculta sola tras conectar o desconectar.</span>
+          </span>
+          <span class="set-ctrl"><input type="checkbox" id="setting-phone-autohide"></span>
+        </label>
+        <div class="settings-row set-row" id="settings-phone-autohide-row">
+          <span class="set-label">
+            <span class="lbl">Quitarla después de</span>
+          </span>
+          <span class="set-ctrl"><select id="setting-phone-autohide-seconds">
+            <option value="3">3 segundos</option>
+            <option value="5">5 segundos</option>
+            <option value="10">10 segundos</option>
+            <option value="30">30 segundos</option>
+            <option value="60">1 minuto</option>
+          </select></span>
+        </div>
+      </section>
+      <section class="set-section">
+        <div class="set-head"><span class="set-ic"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></span><span><span class="set-title">Historial y diagnóstico</span></span></div>
+        <label class="settings-row set-row set-toggle">
+          <span class="set-label">
+            <span class="lbl">Guardar historial de notificaciones</span>
+            <span class="set-help">Se guarda solo en esta PC.</span>
+          </span>
+          <span class="set-ctrl"><input type="checkbox" id="setting-history-enabled"></span>
+        </label>
+        <div class="set-buttons">
+          <button id="open-history-btn" class="action-btn-open" type="button">🕘 Ver historial</button>
+          <button id="open-logs-btn" class="action-btn-open" type="button">📄 Carpeta de logs</button>
+        </div>
+      </section>
+      </div>
+
+      <div class="about-section">
+        <div class="about-title">NotiLink</div>
+        <div class="about-line">Versión <span id="about-version">—</span></div>
+        <div class="about-line">Compilado el <span id="about-build">—</span></div>
+        <div class="about-line">Desarrollado por <span id="about-author">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="history-overlay" class="settings-overlay history-overlay">
+    <div class="history-modal">
+      <div class="settings-header">
+        <span class="history-title">Historial de notificaciones <span id="history-count" class="history-count"></span></span>
+        <select id="history-older-select" class="history-older-select" title="Borrar notificaciones antiguas">
+          <option value="">Borrar anteriores a…</option>
+          <option value="1">Ayer y antes</option>
+          <option value="7">Más de 7 días</option>
+          <option value="30">Más de 30 días</option>
+          <option value="90">Más de 90 días</option>
+          <option value="365">Más de 1 año</option>
+        </select>
+        <button id="history-clear-all" class="history-clear-all" type="button">🗑️ Borrar todo</button>
+        <button id="history-close" class="icon-btn" title="Cerrar">✕</button>
+      </div>
+      <div id="history-stats" class="history-stats"></div>
+      <div class="history-filters">
+        <input type="search" id="history-search" placeholder="Buscar texto...">
+        <select id="history-device"><option value="">Todos los dispositivos</option></select>
+        <select id="history-app"><option value="">Todas las apps</option></select>
+        <select id="history-reason">
+          <option value="">Cualquier estado</option>
+          <option value="active">Aún activa</option>
+          <option value="phone">Quitada en el celular</option>
+          <option value="pc">Eliminada desde la PC</option>
+          <option value="sync">Quitada automáticamente</option>
+          <option value="unknown">Sin registro de cierre</option>
+        </select>
+        <label class="history-date">Desde <input type="date" id="history-from"></label>
+        <label class="history-date">Hasta <input type="date" id="history-to"></label>
+        <button id="history-reset" class="icon-btn text-btn" type="button">Limpiar filtros</button>
+      </div>
+      <div id="history-list" class="history-list"></div>
+    </div>
+  </div>
+
+  <div id="file-drop-overlay" class="settings-overlay">
+    <div class="settings-modal">
+      <div class="settings-header">
+        <span>Enviar archivo al celular</span>
+        <button id="file-drop-cancel-x" class="icon-btn" title="Cancelar">✕</button>
+      </div>
+      <div id="file-drop-preview" class="file-drop-preview"></div>
+      <div id="file-drop-name" class="file-drop-name"></div>
+      <div id="file-drop-size" class="file-drop-size"></div>
+      <div class="file-drop-actions">
+        <button id="file-drop-cancel" class="icon-btn text-btn" type="button">Cancelar</button>
+        <button id="file-drop-send" class="action-btn-open" type="button">Enviar al celular</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="share-overlay" class="settings-overlay">
+    <div class="settings-modal">
+      <div class="settings-header">
+        <span>Compartir al celular</span>
+        <button id="share-close" class="icon-btn" title="Cerrar">✕</button>
+      </div>
+      <p class="pairing-hint">Llega como notificación en el celular — al tocarla, si es un enlace lo abre directo.</p>
+      <textarea id="share-text" class="share-textarea" rows="3" placeholder="Pega o escribe un enlace o texto..."></textarea>
+      <button id="share-send-btn" class="action-btn-open" style="margin-top:10px;width:100%;justify-content:center;">Enviar al celular</button>
+    </div>
+  </div>
+
+  <div id="screen-share-overlay" class="settings-overlay">
+    <div class="settings-modal">
+      <div class="settings-header">
+        <span>Compartir pantalla</span>
+        <button id="screen-share-close" class="icon-btn" title="Cerrar">✕</button>
+      </div>
+
+      <div class="share-mode-tabs">
+        <button id="share-mode-screen" class="share-mode-tab active" type="button">🖥️ Pantalla completa</button>
+        <button id="share-mode-app" class="share-mode-tab" type="button">📱 Solo una app</button>
+      </div>
+      <div id="share-recent-row" class="share-recent" style="display:none">
+        <div class="share-recent-title">Abiertas recientemente</div>
+        <div id="share-recent-list" class="share-recent-list"></div>
+      </div>
+      <div id="share-app-panel" class="share-app-panel" style="display:none">
+        <div class="share-app-hint">La app se abre en su propia ventana, en una pantalla aparte del celular: solo se ve esa app (sin notificaciones ni barra de estado) y puedes seguir usando el celular. Toca una app abierta para cerrarla.</div>
+        <input type="search" id="share-app-search" placeholder="Buscar app...">
+        <div id="share-app-list" class="share-app-list"></div>
+        <details class="share-app-options">
+          <summary>Opciones de la ventana de la app</summary>
+          <div class="settings-row">
+            <label>Tamaño de la pantalla de la app</label>
+            <select id="setting-app-display">
+              <option value="">Como el celular</option>
+              <option value="720x1280">Vertical compacta (720×1280)</option>
+              <option value="1080x1920">Vertical (1080×1920)</option>
+              <option value="1280x720">Horizontal (1280×720)</option>
+              <option value="1920x1080">Horizontal grande (1920×1080)</option>
+              <option value="2560x1440">Horizontal 2K (2560×1440)</option>
+            </select>
+          </div>
+          <div class="settings-row">
+            <label>Tamaño del contenido (densidad)</label>
+            <select id="setting-app-dpi">
+              <option value="0">Como el celular</option>
+              <option value="160">Muy pequeño (160 dpi, más cosas en pantalla)</option>
+              <option value="240">Pequeño (240 dpi)</option>
+              <option value="320">Mediano (320 dpi)</option>
+              <option value="420">Grande (420 dpi)</option>
+              <option value="560">Muy grande (560 dpi)</option>
+            </select>
+          </div>
+          <div class="settings-row">
+            <label>Teclado del celular</label>
+            <select id="setting-app-ime">
+              <option value="local">Dentro de la ventana de la app</option>
+              <option value="fallback">En la pantalla del celular</option>
+              <option value="hide">No mostrarlo (escribir con el teclado de la PC)</option>
+            </select>
+          </div>
+          <div class="settings-row settings-checkbox">
+            <label><input type="checkbox" id="setting-app-decorations"> Mostrar barra de estado (hora, batería), inicio y navegación</label>
+          </div>
+          <div class="settings-row settings-checkbox">
+            <label><input type="checkbox" id="setting-app-autoreturn"> Si la abro en el celular, regresarla a la PC al salir de ella</label>
+          </div>
+          <div class="settings-row settings-checkbox">
+            <label><input type="checkbox" id="setting-app-mirrorphone"> Mientras la uso en el celular, mostrar la pantalla del celular en la PC (se ven también sus notificaciones)</label>
+          </div>
+          <div class="settings-row settings-checkbox">
+            <label><input type="checkbox" id="setting-app-keep"> Al cerrar la ventana, pasar la app a la pantalla del celular (en vez de cerrarla)</label>
+          </div>
+          <div class="settings-row settings-checkbox">
+            <label><input type="checkbox" id="setting-app-restart"> Reiniciar la app al abrirla (empieza desde cero)</label>
+          </div>
+          <div class="settings-row settings-checkbox">
+            <label><input type="checkbox" id="setting-app-audio"> Transmitir el audio del celular (todo el audio, no solo de esa app)</label>
+          </div>
+          <div class="settings-row settings-checkbox">
+            <label><input type="checkbox" id="setting-app-ontop"> Ventana siempre encima de las demás</label>
+          </div>
+          <div class="settings-row settings-checkbox">
+            <label><input type="checkbox" id="setting-app-borderless"> Ventana sin bordes</label>
+          </div>
+        </details>
+      </div>
+
+      <div class="settings-row">
+        <label>Resolución máxima</label>
+        <select id="setting-screen-max-size">
+          <option value="0">Nativa (sin límite)</option>
+          <option value="2560">1440p (2560px)</option>
+          <option value="1920">1080p (1920px)</option>
+          <option value="1280">720p (1280px)</option>
+        </select>
+      </div>
+
+      <div class="settings-row">
+        <label>FPS máximos <span id="setting-screen-max-fps-value" class="settings-value"></span></label>
+        <input type="range" id="setting-screen-max-fps" min="15" max="120" step="15">
+      </div>
+
+      <div class="settings-row">
+        <label>Bitrate de video <span id="setting-screen-bitrate-value" class="settings-value"></span></label>
+        <input type="range" id="setting-screen-bitrate" min="4" max="50" step="1">
+      </div>
+
+      <div class="settings-row">
+        <label>Códec de video</label>
+        <select id="setting-screen-codec">
+          <option value="h264">H.264 (el más compatible)</option>
+          <option value="h265">H.265 / HEVC (mejor calidad por bit, necesita soporte del celular)</option>
+          <option value="av1">AV1 (máxima compresión, soporte aún raro en celulares)</option>
+        </select>
+      </div>
+
+      <div class="settings-row">
+        <label>Buffer de video (suaviza cortes en Wi-Fi inestable, agrega retardo) <span id="setting-screen-buffer-value" class="settings-value"></span></label>
+        <input type="range" id="setting-screen-buffer" min="0" max="200" step="10">
+      </div>
+
+      <div class="settings-row settings-checkbox share-screen-only">
+        <label><input type="checkbox" id="setting-screen-turnoff"> Apagar la pantalla del celular al compartir (ahorra batería)</label>
+      </div>
+
+      <div class="settings-row settings-checkbox share-screen-only">
+        <label><input type="checkbox" id="setting-screen-dim"> Atenuar el celular al compartir: pantalla apagada pero sin bloqueo; se enciende al tocarla (ahorra batería)</label>
+      </div>
+
+      <div class="settings-row settings-checkbox share-screen-only">
+        <label><input type="checkbox" id="setting-screen-stayawake"> Mantener el celular despierto (solo funciona por USB)</label>
+      </div>
+
+      <div class="settings-row settings-checkbox share-screen-only">
+        <label><input type="checkbox" id="setting-screen-audio"> Transmitir también el audio del celular</label>
+      </div>
+
+      <button id="screen-share-recommended" class="icon-btn text-btn" style="margin-bottom:10px;" type="button">↺ Usar configuración recomendada</button>
+
+      <div class="file-drop-actions">
+        <button id="screen-share-cancel" class="icon-btn text-btn" type="button">Cancelar</button>
+        <button id="screen-share-start" class="action-btn-open share-screen-only" type="button">🖥️ Compartir</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="apps-overlay" class="settings-overlay">
+    <div class="settings-modal apps-modal">
+      <div class="settings-header">
+        <span>Apps con notificaciones</span>
+        <button id="apps-close" class="icon-btn" title="Cerrar">✕</button>
+      </div>
+      <input type="text" id="apps-search" class="apps-search" placeholder="Buscar app...">
+      <div id="apps-category-tabs" class="apps-category-tabs">
+        <button class="apps-category-tab active" data-category="all" type="button">Todas</button>
+        <button class="apps-category-tab" data-category="user" type="button">Instaladas</button>
+        <button class="apps-category-tab" data-category="system" type="button">Sistema</button>
+      </div>
+      <div class="apps-toolbar">
+        <span id="apps-count" class="apps-count"></span>
+        <span class="apps-bulk">
+          <button id="apps-all-on" class="link-btn" type="button">Activar todas</button>
+          <button id="apps-all-off" class="link-btn" type="button">Silenciar todas</button>
+        </span>
+      </div>
+      <div id="apps-list" class="apps-list apps-grid"></div>
+    </div>
+  </div>
+
+  <div id="wallpaper-picker-overlay" class="settings-overlay">
+    <div class="settings-modal">
+      <div class="settings-header">
+        <span>Fondo personalizado</span>
+        <button id="wallpaper-picker-close" class="icon-btn" title="Cerrar">✕</button>
+      </div>
+      <p class="pairing-hint">Se aplica igual que el fondo que se extrae automáticamente del celular (mismo desenfoque e intensidad, ajustables en Ajustes), pero eligiendo tú la imagen. Se guarda en esta PC y no depende del celular.</p>
+      <div id="wallpaper-picker-preview" class="wallpaper-picker-preview"></div>
+      <input type="file" id="wallpaper-picker-input" accept="image/*" style="display:none;">
+      <button id="wallpaper-picker-choose" class="action-btn-open" style="margin-top:10px;width:100%;justify-content:center;" type="button">🖼️ Elegir imagen...</button>
+      <button id="wallpaper-picker-clear" class="icon-btn text-btn" style="margin-top:10px;width:100%;justify-content:center;display:none;" type="button">Quitar fondo personalizado (usar el del celular)</button>
+    </div>
+  </div>
+
+  <div id="badge-overlay" class="settings-overlay">
+    <div class="settings-modal badge-modal">
+      <div class="settings-header">
+        <span>Identificador del dispositivo</span>
+        <button id="badge-close" class="icon-btn" title="Cerrar">✕</button>
+      </div>
+      <p class="pairing-hint">Aparece antes del nombre del dispositivo y en el ícono de la barra de tareas de cada app o pantalla que transmita, para distinguir de qué celular viene.</p>
+      <div class="badge-preview-row">
+        <span id="badge-preview" class="device-badge device-badge-lg">S</span>
+        <span id="badge-preview-name" class="badge-preview-name"></span>
+      </div>
+      <label class="badge-field-label" for="badge-text-input">Letra o número (1–2)</label>
+      <input id="badge-text-input" class="badge-text-input" type="text" maxlength="2" autocomplete="off" spellcheck="false">
+      <div class="badge-field-label">Color</div>
+      <div id="badge-swatches" class="badge-swatches"></div>
+      <div class="badge-actions">
+        <button id="badge-reset" class="icon-btn text-btn" type="button">Automático</button>
+        <button id="badge-save" class="action-btn-open" type="button">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="pairing-overlay" class="settings-overlay">
+    <div class="settings-modal pairing-modal">
+      <div class="settings-header">
+        <span>Vincular dispositivo</span>
+        <button id="pairing-close" class="icon-btn" title="Cerrar">✕</button>
+      </div>
+
+      <div id="pairing-qr-view">
+        <p class="pairing-hint">Escanea este código con NotiLink en tu celular, o escríbelo en la app:</p>
+        <img id="pairing-qr-img" class="pairing-qr-img" alt="Código QR">
+        <div id="pairing-ip" class="pairing-ip"></div>
+        <div id="pairing-ip-others" class="pairing-hint" style="display:none;margin-top:6px;font-size:11px;"></div>
+        <p class="pairing-hint" style="margin-top:8px;font-size:11px;">Fuera de casa (datos móviles u otra red): instala Tailscale en esta PC y en el celular con la misma cuenta; NotiLink usa su dirección (100.x) por sí solo.</p>
+        <p class="pairing-hint" style="margin-top:6px;font-size:11px;">¿Usas la zona Wi-Fi (hotspot) del celular? Conecta esta PC a esa red: la IP de arriba se actualiza sola y en el celular "Buscar PC automáticamente" la encuentra.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PC ↔ PC (see docs/PROTOCOL.md "PC ↔ PC"): linked PCs on the left, the selected one's
+       conversation (messages, clipboard, files with progress) or the "Añadir PC" flow on the right. -->
+  <div id="pcs-overlay" class="settings-overlay">
+    <div class="history-modal pcs-modal">
+      <div class="settings-header">
+        <span class="history-title">PCs vinculadas</span>
+        <button id="pcs-close" class="icon-btn" title="Cerrar">✕</button>
+      </div>
+      <div class="pcs-layout">
+        <aside class="pcs-sidebar">
+          <div id="pcs-list" class="pcs-list"></div>
+          <button id="pcs-add-btn" class="action-btn-open pcs-add-btn" type="button">＋ Añadir PC</button>
+          <div id="pcs-self" class="pcs-self"></div>
+        </aside>
+        <section class="pcs-main">
+          <div id="pcs-empty" class="pcs-empty">
+            <svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="5" width="9.5" height="8" rx="1.2"/><path d="M3.5 17.5h4.5M5.75 13v4.5"/><rect x="13.5" y="5" width="9.5" height="8" rx="1.2"/><path d="M16 17.5h4.5M18.25 13v4.5"/><path d="M11.2 9h1.6"/></svg>
+            <p>Conecta esta PC con otras PCs que tengan NotiLink para mandarles mensajes, tu portapapeles y archivos de cualquier tamaño, directo por tu red (o por Tailscale), sin pasar por internet.</p>
+            <button id="pcs-empty-add" class="action-btn-open" type="button">＋ Añadir PC</button>
+          </div>
+
+          <div id="pcs-add-view" class="pcs-add-view">
+            <h3 class="pcs-h3">Añadir PC</h3>
+            <p class="pairing-hint">Abre NotiLink en la otra PC (debe tener esta misma versión o una más nueva). Estando en la misma red aparece abajo; si no, escribe su IP. En la otra PC aparecerá un código de 6 dígitos para escribirlo aquí.</p>
+            <div class="pcs-section-title">En esta red <button id="pcs-scan-btn" class="link-btn" type="button">Buscar de nuevo</button></div>
+            <div id="pcs-scan-list" class="pcs-scan-list"></div>
+            <div class="pcs-section-title">Por dirección IP</div>
+            <div class="pcs-ip-row">
+              <input id="pcs-ip-input" class="pcs-input" type="text" placeholder="Ej. 192.168.1.20 o 100.64.1.5 (Tailscale)" autocomplete="off" spellcheck="false">
+              <button id="pcs-ip-connect" class="action-btn-open" type="button">Conectar</button>
+            </div>
+            <div id="pcs-code-step" class="pcs-code-step">
+              <p>Escribe el código que apareció en <b id="pcs-code-target"></b>:</p>
+              <div class="pcs-ip-row">
+                <input id="pcs-code-input" class="pcs-input pcs-code-input" type="text" maxlength="6" inputmode="numeric" autocomplete="off" placeholder="000000">
+                <button id="pcs-code-send" class="action-btn-open" type="button">Vincular</button>
+                <button id="pcs-code-cancel" class="link-btn" type="button">Cancelar</button>
+              </div>
+            </div>
+            <div id="pcs-add-status" class="pcs-add-status"></div>
+          </div>
+
+          <div id="pcs-chat-view" class="pcs-chat-view">
+            <div class="pcs-chat-header">
+              <span id="pcs-chat-dot" class="pcs-dot"></span>
+              <span class="pcs-chat-title">
+                <span id="pcs-chat-name" class="pcs-chat-name"></span>
+                <input id="pcs-rename-input" class="pcs-input pcs-rename-input" type="text" maxlength="40">
+                <span id="pcs-chat-sub" class="pcs-chat-sub"></span>
+              </span>
+              <button id="pcs-nudge-btn" class="icon-btn" type="button" title="Llamar la atención (suena y abre NotiLink en la otra PC)">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              </button>
+              <div class="device-menu-wrap">
+                <button id="pcs-menu-btn" class="icon-btn" type="button" title="Opciones">
+                  <svg viewBox="0 0 24 24" width="18" height="18"><circle cx="12" cy="5" r="2.2" fill="currentColor"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/><circle cx="12" cy="19" r="2.2" fill="currentColor"/></svg>
+                </button>
+                <div id="pcs-menu" class="device-menu">
+                  <button class="device-menu-item" id="pcs-menu-screen-view" type="button">Ver su pantalla</button>
+                  <button class="device-menu-item" id="pcs-menu-screen-share" type="button">Compartir mi pantalla</button>
+                  <button class="device-menu-item" id="pcs-menu-screen-allow" type="button">Puede ver mi pantalla sin preguntar</button>
+                  <button class="device-menu-item" id="pcs-menu-control-allow" type="button">Puede controlar mi PC sin preguntar</button>
+                  <button class="device-menu-item" id="pcs-menu-rename" type="button">Renombrar</button>
+                  <button class="device-menu-item" id="pcs-menu-clear" type="button">Borrar conversación</button>
+                  <button class="device-menu-item device-menu-item-danger" id="pcs-menu-unpair" type="button">Desvincular esta PC</button>
+                </div>
+              </div>
+            </div>
+            <div id="pcs-messages" class="pcs-messages"></div>
+            <div class="pcs-composer">
+              <button id="pcs-attach-btn" class="icon-btn" type="button" title="Enviar archivos (también puedes arrastrarlos aquí)">
+                <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+              </button>
+              <button id="pcs-clip-btn" class="icon-btn" type="button" title="Enviar mi portapapeles (en la otra PC queda copiado)">
+                <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>
+              </button>
+              <textarea id="pcs-input" class="share-textarea pcs-textarea" rows="1" placeholder="Escribe un mensaje… (Enter envía · Shift+Enter nueva línea)"></textarea>
+              <button id="pcs-send-btn" class="action-btn-open" type="button">Enviar</button>
+              <input type="file" id="pcs-file-input" multiple style="display:none">
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="pcs-code-overlay" class="settings-overlay">
+    <div class="settings-modal">
+      <div class="settings-header">
+        <span>Vincular PC</span>
+      </div>
+      <p class="pairing-hint"><b id="pcs-code-from"></b> quiere vincularse con esta PC. Escribe este código en esa PC:</p>
+      <div id="pcs-code-display" class="pcs-code-display"></div>
+      <p class="pairing-hint" style="font-size:11px;">Si no fuiste tú, recházalo.</p>
+      <button id="pcs-code-reject" class="icon-btn text-btn" type="button" style="width:100%;justify-content:center;">Rechazar</button>
+    </div>
+  </div>
+
+  <div id="pcs-screen-overlay" class="settings-overlay">
+    <div class="settings-modal">
+      <div class="settings-header">
+        <span id="pcs-screen-title">Compartir pantalla</span>
+      </div>
+      <p class="pairing-hint"><b id="pcs-screen-from"></b> <span id="pcs-screen-what">quiere ver tu pantalla.</span></p>
+      <p id="pcs-screen-note" class="pairing-hint" style="font-size:11px;"></p>
+      <div class="pcs-screen-answers">
+        <button id="pcs-screen-always" class="action-btn-open" type="button">Permitir siempre</button>
+        <button id="pcs-screen-once" class="action-btn-open" type="button">Permitir esta vez</button>
+        <button id="pcs-screen-deny" class="icon-btn text-btn" type="button">Rechazar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="detail-overlay" class="settings-overlay">
+    <div class="settings-modal detail-modal">
+      <div class="settings-header">
+        <span id="detail-title">Notificación</span>
+        <button id="detail-close" class="icon-btn" title="Cerrar">✕</button>
+      </div>
+      <div id="detail-body" class="detail-body"></div>
+    </div>
+  </div>
+
+  <div id="image-lightbox" class="image-lightbox">
+    <img id="image-lightbox-img" class="image-lightbox-img">
+    <button id="image-lightbox-open" class="image-lightbox-open" type="button" title="Abrir en Fotos de Windows">Abrir</button>
+    <button id="image-lightbox-close" class="icon-btn image-lightbox-close" title="Cerrar">✕</button>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

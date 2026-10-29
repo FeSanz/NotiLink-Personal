@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <!-- Android 14+ requires the app to hold one of a specific permission set to start a
+         foregroundServiceType="connectedDevice" service (see NotiLinkNotificationListener) —
+         without this, startForeground() throws MissingForegroundServiceTypeException and the
+         listener service crash-loops, which is what "NotiLink sigue fallando" was. -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- Turns the screen on when opening a notification from the PC while it's off/locked (see
+         NotiLinkAccessibilityService.wakeScreen) — a normal permission, no runtime prompt. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Reading the current wallpaper (to show faintly behind the PC app's notification list)
+         needs storage/media read access on this OEM's build, even though stock AOSP normally
+         doesn't require it for WallpaperManager.getDrawable() — and on at least one Samsung
+         build, WallpaperManager itself still gates on the legacy READ_EXTERNAL_STORAGE even on
+         Android 15, not just the API 33+ granular media permission, so both are requested; no
+         maxSdkVersion cap on the legacy one for that reason. Request is skipped gracefully (see
+         sendWallpaper) if denied either way, since this is a purely cosmetic feature. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Visualizer on the output mix (PC waves "al ritmo de la música"): analysis only, no recording. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- Reading the connected Wi-Fi's SSID/signal strength requires location permission —
+         Android's own restriction, since that info can reveal where the device physically is.
+         Omitted from the battery.update payload entirely if this is denied. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Per-SIM cellular signal strength + carrier name (dual-SIM shows both lines) —
+         also gated behind runtime consent; omitted from the payload if denied. -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <!-- Lets the PC's call bar answer/end a call via TelecomManager.acceptRingingCall()/endCall(). -->
+    <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
+    <!-- A "special access" permission like Notification Access/Accessibility — declaring it here
+         doesn't grant it; the user still has to flip it on via Settings.ACTION_NOTIFICATION_
+         POLICY_ACCESS_SETTINGS (see MainActivity's onboarding row), checked at runtime via
+         NotificationManager.isNotificationPolicyAccessGranted() before setDnd ever calls
+         setInterruptionFilter(). Confirmed a genuinely separate grant from Notification Access
+         itself, not implied by it. -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+    <!-- Auto-rotate toggle from the PC (Settings.System.ACCELEROMETER_ROTATION) — a special
+         "Modify system settings" grant the user turns on once, see MainActivity. -->
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+
+    <!-- Without this, PackageManager.queryIntentActivities() in InstalledAppsProvider is subject
+         to Android's package visibility filtering (API 30+) and silently returns almost nothing
+         except system/OEM apps that get automatic visibility — this is why the app filter list
+         was only ever showing Samsung/system apps instead of every installed app. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.NotiLink"
+        android:usesCleartextTraffic="true">
+
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".ui.AppPickerActivity"
+            android:exported="false"
+            android:label="@string/title_app_picker" />
+
+        <!-- The Android share-sheet target — "NotiLink" shows up alongside WhatsApp/Gmail/etc.
+             whenever the user taps Share on a link or text elsewhere. android:noHistory so it
+             never lingers as a stray back-stack entry once it hands the content off and
+             finishes (see ShareToPcActivity). -->
+        <activity
+            android:name=".ui.ShareToPcActivity"
+            android:exported="true"
+            android:label="@string/share_target_label"
+            android:theme="@style/Theme.NotiLink.Transparent"
+            android:noHistory="true"
+            android:excludeFromRecents="true">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <!-- Selecting 2+ items in the share sheet fires a completely separate action
+                 (SEND_MULTIPLE, not a SEND with more than one URI) — without this second
+                 filter Android never even offers NotiLink as a target once more than one file
+                 is selected, confirmed as a real "no aparece la aplicación" report. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name=".listener.NotiLinkNotificationListener"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+        <receiver
+            android:name=".listener.ConnectionActionReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".listener.StatusDismissReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".listener.CopyToClipboardReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".listener.ShareActionReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".ui.RecentAppsWidget"
+            android:exported="false"
+            android:label="@string/widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_recent_apps" />
+        </receiver>
+
+        <receiver
+            android:name=".ui.WidgetShareReceiver"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.StopShareConfirmActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.NotiLink.Transparent" />
+
+        <!-- Optional, separate from notification access — only needed for "Abrir" (opening a
+             specific notification from the PC, see NotiLinkAccessibilityService). Everything
+             else in the app works without it. -->
+        <service
+            android:name=".listener.NotiLinkAccessibilityService"
+            android:exported="false"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
+    </application>
+
+</manifest>
