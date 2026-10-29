@@ -2782,3 +2782,21 @@ body.dark .badge-swatch.selected { border-color: #fff; box-shadow: 0 0 0 2px #1e
   cursor: pointer;
 }
 .show-all-btn:hover { color: var(--text-primary); }
+
+/* ---- Responsive header: on narrower windows "PCs vinculadas" moves into the ⋮ menu (it stays on
+   the bar while a linked PC's own tab is open, since that tab hides the ⋮ menu), and below that the
+   bar wraps instead of overflowing. ---- */
+.pcs-menu-only { display: none; }
+@media (max-width: 1100px) {
+  body:not(.peer-tab) #pcs-btn { display: none; }
+  .pcs-menu-only { display: flex; }
+}
+/* Narrow: the status label keeps its own corner and the icon group takes the rest of the row,
+   wrapping onto a second line inside that space — no empty gap beside the label. */
+@media (max-width: 1100px) {
+  .header-left { flex: 0 0 auto; }
+  .header-right { flex: 1 1 0; flex-wrap: wrap; justify-content: flex-end; row-gap: 4px; }
+}
+
+/* "Desconectado" / "reconectando..." stack on two lines (the text carries a newline). */
+#conn-label-text { white-space: pre-line; line-height: 1.2; }

@@ -1290,6 +1290,7 @@
   function toggleCollapse(cardEl, item) {
     const wasCollapsed = !!item.uiCollapsed;
     item.uiCollapsed = !wasCollapsed;
+    updateExpandAllIcon();
     if (!settings.cardAnimations) {
       renderAll();
       return;
@@ -1353,6 +1354,19 @@
     return !!(item && (isTreatedAsMessaging(item) || EMAIL_PACKAGES.has(item.packageName)));
   }
 
+  // The button always shows what its NEXT click will do: while any card is open it collapses
+  // (arrows up), otherwise it expands (arrows down). Re-derived from the real card state on every
+  // render, so new notifications or single-card toggles can't leave it stale.
+  function updateExpandAllIcon() {
+    const btn = document.getElementById('expand-all-btn');
+    if (!btn) return;
+    const state = activeState();
+    const anyOpen = !!state && [...state.data.values()].some(i => hasCollapsibleContent(i) && !i.uiCollapsed);
+    const paths = anyOpen ? 'M6 10l6-6 6 6M6 20l6-6 6 6' : 'M6 4l6 6 6-6M6 14l6 6 6-6';
+    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="${paths}"/></svg>`;
+    btn.title = anyOpen ? 'Contraer todas las notificaciones' : 'Expandir todas las notificaciones';
+  }
+
   function renderAll() {
     if (peerTabActive()) { renderPeerFeed(); return; }
     const state = activeState();
@@ -1367,7 +1381,7 @@
     });
     listEl.innerHTML = visibleKeys.length
       ? visibleKeys.map(k => cardHtml(data.get(k))).join('')
-      : `<div class="empty-state">${emptyStateMessage(order.length)}</div>`;
+      : `<div class="empty-state">${emptyStateMessage(order.length)}</div>`;    updateExpandAllIcon();
   }
 
   function emptyStateMessage(totalCount) {
@@ -2243,8 +2257,8 @@
     const net = state && state.network;
     connLabelText.textContent = active
       ? (active.connected
-          ? 'Conectado' + (net ? (net.route === 'vpn' ? ' · Tailscale (remoto)' : ' · red local') + (net.metered ? ' · datos móviles' : '') : '')
-          : 'Desconectado — reconectando...')
+          ? 'Conectado' + (net ? (net.route === 'vpn' ? ' · Tailscale (remoto)' : '') + (net.metered ? ' · datos móviles' : '') : '')
+          : 'Desconectado\nreconectando...')
       : 'Sin dispositivo vinculado';
 
     const battery = state && state.battery.level != null ? state.battery : null;
@@ -2706,7 +2720,6 @@
       if (anyOpen) { i.uiCollapsed = true; i.uiAll = false; }
       else { i.uiCollapsed = false; i.uiAll = true; }
     }
-    expandAllBtn.textContent = anyOpen ? '⌄ Expandir todas' : '⌃ Contraer todas';
     renderAll();
   });
 
@@ -4958,6 +4971,10 @@
 
   // ---- page → host
   pcsBtn.addEventListener('click', openPcsOverlay);
+  document.getElementById('device-menu-pcs').addEventListener('click', () => {
+    document.getElementById('device-menu').classList.remove('open');
+    openPcsOverlay();
+  });
   document.getElementById('pcs-close').addEventListener('click', () => pcsOverlay.classList.remove('open'));
   pcsOverlay.addEventListener('click', e => {
     if (e.target === pcsOverlay) pcsOverlay.classList.remove('open');
